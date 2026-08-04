@@ -1,0 +1,52 @@
+{
+  "manifest_version": 1,
+  "release": "dev-dummy-1",
+  "modules": [
+    {
+      "id": "m99",
+      "alias": "tes",
+      "slug": "tes",
+      "presenter": "torang",
+      "energy": "netral",
+      "assets": [
+        {
+          "file": "m99_materi_tes.mp4",
+          "jenis": "materi",
+          "duration_ms": 4000
+        },
+        {
+          "file": "m99_enter_l_tes.mp4",
+          "jenis": "enter_l",
+          "duration_ms": 2000
+        },
+        {
+          "file": "m99_enter_r_tes.mp4",
+          "jenis": "enter_r",
+          "duration_ms": 2000
+        },
+        {
+          "file": "m99_exit_l_tes.mp4",
+          "jenis": "exit_l",
+          "duration_ms": 2000
+        },
+        {
+          "file": "m99_exit_r_tes.mp4",
+          "jenis": "exit_r",
+          "duration_ms": 2000
+        },
+        {
+          "file": "m99_idle_tes.mp4",
+          "jenis": "idle",
+          "duration_ms": 3000
+        }
+      ],
+      "audio": [
+        {
+          "file": "m99_materi_tes_audio.m4a",
+          "for_jenis": "materi",
+          "duration_ms": 4000
+        }
+      ]
+    }
+  ]
+}

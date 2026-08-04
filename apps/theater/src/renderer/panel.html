@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Panel Operator — Panggung Torang</title>
+<style>
+  :root { --bg:#101528; --card:#1a2140; --line:#2c3564; --txt:#e8ebff; }
+  body { margin:0; font:14px/1.5 system-ui, "Segoe UI", sans-serif; background:var(--bg); color:var(--txt); padding:18px; }
+  h1 { font-size:16px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#9fa8d8; margin:0 0 8px; }
+  button { background:#2b3a7e; color:#fff; border:1px solid #40509e; border-radius:8px; padding:10px 14px; margin:0 6px 6px 0; cursor:pointer; font-size:14px; }
+  button:hover { background:#37489c; }
+  button.stop { background:#7e2b2b; border-color:#9e4040; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:99px; margin-right:6px; }
+  .dot.online { background:#43d17c; } .dot.offline { background:#d14343; }
+  .muted { color:#7580b3; font-size:12px; }
+  #note { color:#ffd97d; min-height:1.3em; }
+  code { color:#9fe; font-size:12px; }
+  kbd { background:#0d1122; border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>Panel Operator <span class="muted">· Panggung Torang · mode teacher</span></h1>
+
+  <div class="card">
+    <h2>Status</h2>
+    <div><span id="dot" class="dot offline"></span>Cloud: <b id="cloud">menyambung…</b>
+      <span class="muted"> · endpoint <code id="ep">—</code> · v<span id="ver">—</span>
+      · offset jam <span id="off">—</span> ms</span></div>
+    <div class="muted">Cue terakhir: <code id="lastcue">—</code></div>
+    <div id="note"></div>
+  </div>
+
+  <div class="card">
+    <h2>Kendali (jalur cue penuh lewat cloud — sama dengan voice nanti)</h2>
+    <button onclick="intent({intent:'GO'})">▶ GO <span class="muted">Ctrl+Alt+G</span></button>
+    <button onclick="intent({intent:'REPLAY'})">↻ Ulang <span class="muted">Ctrl+Alt+R</span></button>
+    <button class="stop" onclick="intent({intent:'STOP'})">■ STOP <span class="muted">Ctrl+Alt+S</span></button>
+    <div style="margin-top:6px">
+      <button onclick="intent({intent:'PLAY_MODULE', alias:'tes', target:'tv1'})">Puter “tes” di TV1</button>
+      <button onclick="intent({intent:'MOVE', to:'tv2'})">Pindah TV2</button>
+      <button onclick="intent({intent:'MOVE', to:'tv3'})">Pindah TV3</button>
+      <button onclick="intent({intent:'MOVE', to:'tv4'})">Pindah TV4</button>
+      <button onclick="intent({intent:'MOVE', to:'tv1'})">Pindah TV1</button>
+    </div>
+    <div class="muted">Rundown lengkap + status ACK: buka <code id="panelurl">—</code> di browser.</div>
+  </div>
+
+  <audio id="pa" preload="auto"></audio>
+  <script src="./panel.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+# Log Keputusan Teknis (wewenang programmer — master §15)
+
+Format ringkas: keputusan → alasan → catatan. Keputusan PRODUK tidak diulang di
+sini (lihat master doc; itu terkunci).
+
+## D1 · TypeScript di semua paket, monorepo npm workspaces
+`packages/shared` (protokol) + `apps/cloud` + `apps/theater`. Alasan: satu
+bahasa untuk cloud & Electron; kontrak pesan dibagi sebagai **source TS**
+(tanpa build step terpisah) — cloud memakai `tsx`, theater dibundel esbuild.
+Catatan: saat packaging NSIS nanti tambah langkah build resmi.
+
+## D2 · HTTP = Fastify, WS = `ws`, validasi = zod (v4)
+Alasan: ringan, matang, TS-friendly. **Validasi DUA SISI**: cloud memvalidasi
+semua input; endpoint memvalidasi ulang cue + whitelist type/target dan menolak
+yang asing (ACK `rejected`) — prinsip "jangan percaya perintah mentah".
+
+## D3 · Penyimpanan fase 1 = in-memory + log JSONL
+Show-state, registry, ACK = ephemeral (memang state pertunjukan); jejak ke
+`apps/cloud/logs/cue-log.jsonl`. **Postgres masuk saat login sederhana &
+binding (§8)** — skema tabel sudah ditetapkan master doc. Alasan: jangan bawa
+DB sebelum ada data yang benar-benar butuh tahan lama.
+
+## D4 · Geometri arah = RING searah jarum jam `[tv1, tv2, tv3, tv4]`
+`pindah` memilih jalur ring terpendek; seri (layar berseberangan) → searah
+jarum jam. Searah jarum jam = `exit_r` disambut `enter_l` (HUKUM §6 dijaga
+`resolveDirection` + test). **ASUMSI yang perlu kalibrasi di ruangan asli
+bersama tim video**; kelak jadi data registry per-ruangan, bukan konstanta.
+
+## D5 · MOVE_CHARACTER di wire diurai jadi 2 cue PLAY_VIDEO
+Exit di layar asal (T) + enter di tujuan (T + durasi_exit − overlap 300 ms);
+enter membawa `payload.then_asset` (idle loop). Alasan: satu cue = satu
+target+aset+waktu — sederhana & sinkron; sesuai §3.3 ("kombinasi otomatis").
+Durasi dari manifest (diukur ffprobe saat generate aset).
+
+## D6 · REPLAY ("ulang") = cue terakhir ber-role materi/enter, transisi di-CUT
+Enter di-replay sebagai keadaan akhirnya (idle di layar tujuan) tanpa transisi.
+Simplifikasi fase 1 — tinjau ulang saat rundown modul asli ada.
+
+## D7 · Electron: esbuild, tanpa framework UI, jembatan IPC sempit
+main+preload = CJS node, renderer = IIFE browser. `contextIsolation` aktif,
+renderer tanpa Node; preload hanya mengekspos kanal yang didefinisikan
+(`global.d.ts`). Panel operator masih vanilla TS — React dipertimbangkan saat
+panel membesar (rundown pohon, antrean unbound, dsb).
+
+## D8 · Hotkey global menembak API cloud, BUKAN playback lokal
+`Ctrl+Alt+G/S/R` → `POST /api/intent` → cue kembali via WS. Alasan: menguji
+jalur cue yang SAMA dengan voice nanti (§14 "hotkey GO manual DULUAN — jalur
+cue teruji tanpa STT"); hotkey tetap backup senyap saat voice gagal.
+
+## D9 · Audio dari window panel (mesin guru) → PA; video TV muted
+Elemen `<audio>` tersembunyi di panel operator, dijadwalkan pada `start_at`
+yang sama dengan video (keputusan #5: satu PA sentral). Sinkron TV↔PA trivial
+karena satu mesin (keputusan #9).
+
+## D10 · Auth fase 1 = `room_key` (REST + WS hello), SHA-256 + timingSafeEqual
+Default dev `dev-room-key` (cloud memperingatkan). TLS urusan Caddy saat deploy.
+Kebijakan join_key per-batch (statik vs rotasi) = open item tim — slot sudah ada.
+Cloud bind `127.0.0.1` secara default; `TORANG_HOST=0.0.0.0` eksplisit bila perlu.
+
+## D11 · Aset placeholder DI-COMMIT (total ~140 KB)
+Supaya `npm install && npm run dev` langsung jalan tanpa ffmpeg di Windows.
+Regenerasi: `npm run assets` (ffmpeg; di Windows bisa lewat WSL). Penamaan file
+mengikuti kontrak §6 (`m99_{jenis}_tes.*` + `_audio.m4a`) + `manifest.json`
+dengan durasi terukur.
+
+## D12 · Waktu: `start_at` absolut jam server; offset klien via ping/pong
+Offset = `server_now + rtt/2 − now`, dikirim balik ke cloud (tanda merah panel
+bila >250 ms, §7). STOP tanpa lead (langsung). Ketepatan terukur di smoke test:
+telat 0–1 ms (satu mesin).
+
+## D13 · EOL & git
+`.gitattributes`: `*.sh` LF, `*.bat`/`*.ps1` CRLF (pelajaran repo torang-murid);
+aset biner ditandai `binary`. Skrip `.sh` di-`chmod +x` sebelum commit.

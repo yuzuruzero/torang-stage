@@ -1,0 +1,22 @@
+{
+  "name": "@torang/theater",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App endpoint Panggung Torang — Electron satu codebase, mode teacher & student",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && electron .",
+    "start": "node build.mjs && electron ."
+  },
+  "dependencies": {
+    "@torang/shared": "*",
+    "ws": "^8.21.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.10",
+    "electron": "^43.2.0",
+    "esbuild": "^0.25.0"
+  }
+}

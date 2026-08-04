@@ -1,0 +1,11 @@
+{
+  "mode": "teacher",
+  "endpoint_id": "teacher-1",
+  "cloud_ws": "ws://127.0.0.1:8787/ws",
+  "cloud_api": "http://127.0.0.1:8787",
+  "room_key": "dev-room-key",
+  "branch": "dev",
+  "room": "r1",
+  "dev_layout": true,
+  "kiosk": false
+}

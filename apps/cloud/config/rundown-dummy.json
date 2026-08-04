@@ -1,0 +1,10 @@
+{
+  "name": "Modul dummy end-to-end (fase 1 §14 langkah 5)",
+  "steps": [
+    { "label": "Puter materi 'tes' di TV1", "intent": { "intent": "PLAY_MODULE", "alias": "tes", "target": "tv1" } },
+    { "label": "Pindah ke TV3 (arah otomatis)", "intent": { "intent": "MOVE", "to": "tv3" } },
+    { "label": "Pindah ke TV2", "intent": { "intent": "MOVE", "to": "tv2" } },
+    { "label": "Balik ke TV1", "intent": { "intent": "MOVE", "to": "tv1" } },
+    { "label": "Stop — semua idle", "intent": { "intent": "STOP" } }
+  ]
+}

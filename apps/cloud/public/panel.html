@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Panel Guru — Panggung Torang (dev)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --bg:#101528; --card:#1a2140; --line:#2c3564; --txt:#e8ebff; --dim:#93a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 system-ui, "Segoe UI", sans-serif; background:var(--bg); color:var(--txt); padding:20px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:#9fa8d8; margin-bottom:16px; font-size:12px; }
+  .grid { display:grid; grid-template-columns: 1.1fr 1fr; gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card h2 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:#9fa8d8; margin:0 0 10px; }
+  button { background:#2b3a7e; color:#fff; border:1px solid #40509e; border-radius:8px; padding:8px 12px; margin:0 6px 6px 0; cursor:pointer; font-size:13px; }
+  button:hover { background:#37489c; }
+  button.stop { background:#7e2b2b; border-color:#9e4040; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td, th { padding:4px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  .ok { color:#7dffa8; } .warn { color:#ffd97d; } .err { color:#ff8d7d; }
+  .badge { display:inline-block; padding:1px 7px; border-radius:99px; font-size:11px; border:1px solid var(--line); margin:1px 2px; }
+  .badge.played { background:#12401f; color:#7dffa8; }
+  .badge.scheduled, .badge.received { background:#123a40; color:#7de8ff; }
+  .badge.error, .badge.rejected { background:#401212; color:#ff8d7d; }
+  .step { padding:3px 6px; border-radius:6px; }
+  .step.now { background:#2b3a7e; }
+  .step.done { color:#788; text-decoration:line-through; }
+  #note { color:#ffd97d; min-height:1.4em; margin:8px 0; }
+  .kunci { margin-bottom:14px; }
+  input { background:#0d1122; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  code { color:#9fe; }
+</style>
+</head>
+<body>
+  <h1>Panel Guru — Panggung Torang <span style="color:#667">· dev</span></h1>
+  <div class="sub">Cloud minimal fase 1 · cue lewat jalur yang sama dengan voice nanti (hotkey duluan sesuai §14)</div>
+
+  <div class="kunci card">
+    Kunci ruangan: <input id="key" type="password" value="dev-room-key" />
+    <span style="color:#667;font-size:12px">(default dev — samakan dengan TORANG_ROOM_KEY)</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Rundown — <span id="rname"></span></h2>
+      <div id="steps"></div>
+      <div style="margin-top:10px">
+        <button onclick="kirim({intent:'GO'})">▶ GO (langkah berikut)</button>
+        <button onclick="kirim({intent:'REPLAY'})">↻ Ulang</button>
+        <button class="stop" onclick="kirim({intent:'STOP'})">■ STOP</button>
+        <button onclick="resetRundown()">⟲ Reset rundown</button>
+      </div>
+      <div id="note"></div>
+      <h2 style="margin-top:14px">Manual</h2>
+      <div>
+        <button onclick="kirim({intent:'PLAY_MODULE', alias:'tes', target:'tv1'})">Puter “tes” di TV1</button>
+        <button onclick="kirim({intent:'MOVE', to:'tv1'})">Pindah TV1</button>
+        <button onclick="kirim({intent:'MOVE', to:'tv2'})">Pindah TV2</button>
+        <button onclick="kirim({intent:'MOVE', to:'tv3'})">Pindah TV3</button>
+        <button onclick="kirim({intent:'MOVE', to:'tv4'})">Pindah TV4</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Show-state & Endpoint</h2>
+      <div>Torang di: <b id="screen">—</b> · arah terakhir: <span id="dir">—</span> · modul aktif: <span id="mod">—</span></div>
+      <table id="eps" style="margin-top:8px">
+        <thead><tr><th>Endpoint</th><th>Peran</th><th>Target</th><th>Jam</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="epkosong" class="warn" style="margin-top:6px; display:none">
+        Belum ada endpoint tersambung — jalankan <code>npm run dev:app</code>.
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Cue terakhir + ACK</h2>
+    <table id="cues">
+      <thead><tr><th>Cue</th><th>Tipe</th><th>Target</th><th>Aset</th><th>Mulai</th><th>ACK</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+function key() { return $("#key").value; }
+
+async function kirim(intent) {
+  $("#note").textContent = "";
+  try {
+    const r = await fetch("/api/intent", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ room_key: key(), intent }),
+    });
+    const j = await r.json();
+    if (!j.ok) $("#note").textContent = "⚠ " + (j.error ?? "gagal");
+    else if (j.note) $("#note").textContent = j.note;
+  } catch (e) {
+    $("#note").textContent = "⚠ cloud tidak terjangkau: " + e.message;
+  }
+  segarkan();
+}
+
+async function resetRundown() {
+  await fetch("/api/rundown/reset", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ room_key: key() }),
+  });
+  segarkan();
+}
+
+function badge(a) {
+  const cls = ["played","scheduled","received","error","rejected"].includes(a.status) ? a.status : "";
+  const t = a.detail ? ` title="${a.detail.replaceAll('"', "'")}"` : "";
+  return `<span class="badge ${cls}"${t}>${a.endpoint_id}: ${a.status}</span>`;
+}
+
+async function segarkan() {
+  let s;
+  try {
+    s = await (await fetch("/api/state")).json();
+  } catch {
+    $("#note").textContent = "⚠ cloud tidak terjangkau";
+    return;
+  }
+  $("#rname").textContent = s.rundown.name;
+  $("#steps").innerHTML = s.rundown.steps
+    .map((label, i) => {
+      const cls = i < s.rundown.pointer ? "done" : i === s.rundown.pointer ? "now" : "";
+      return `<div class="step ${cls}">${i + 1}. ${label}</div>`;
+    })
+    .join("");
+  $("#screen").textContent = s.show.screen ?? "— (idle)";
+  $("#dir").textContent = s.show.last_dir ?? "—";
+  $("#mod").textContent = s.show.active_module ?? "—";
+
+  const rows = s.endpoints.map((e) => {
+    const jam =
+      e.clock_offset_ms == null
+        ? "—"
+        : Math.abs(e.clock_offset_ms) > 250
+          ? `<span class="err">${e.clock_offset_ms} ms ⚠</span>`
+          : `<span class="ok">${e.clock_offset_ms} ms</span>`;
+    return `<tr><td>${e.endpoint_id}</td><td>${e.role}</td><td>${e.targets.join(", ")}</td><td>${jam}</td></tr>`;
+  });
+  $("#eps tbody").innerHTML = rows.join("");
+  $("#epkosong").style.display = s.endpoints.length ? "none" : "block";
+
+  $("#cues tbody").innerHTML = s.recent_cues
+    .map(
+      (c) => `<tr>
+        <td><code>${c.cue_id}</code></td><td>${c.type}</td>
+        <td>${c.targets.join(", ")}</td><td>${c.asset ?? "—"}</td>
+        <td>${new Date(c.start_at).toLocaleTimeString("id-ID")}</td>
+        <td>${c.acks.map(badge).join(" ") || "…"}</td>
+      </tr>`
+    )
+    .join("");
+}
+segarkan();
+setInterval(segarkan, 1000);
+</script>
+</body>
+</html>

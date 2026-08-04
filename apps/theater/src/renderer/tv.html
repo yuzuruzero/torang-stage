@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>TV — Panggung Torang</title>
+<style>
+  html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+  #stage { position:relative; width:100vw; height:100vh; }
+
+  /* Scene idle: logo bernafas (jangan tampak beku) */
+  #idle {
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px;
+    background:radial-gradient(ellipse at center, #131a33 0%, #05070f 70%);
+    color:#e8ebff; font-family:system-ui, "Segoe UI", sans-serif;
+  }
+  #idle .logo {
+    font-size:9vw; font-weight:800; letter-spacing:.12em;
+    animation: nafas 3.2s ease-in-out infinite;
+    text-shadow:0 0 30px #3350cc88;
+  }
+  #idle .label { color:#5a6699; font-size:2.5vw; letter-spacing:.3em; }
+  @keyframes nafas { 0%,100% { opacity:.75; transform:scale(1); } 50% { opacity:1; transform:scale(1.03); } }
+
+  #video {
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:contain; background:#000; display:none;
+  }
+
+  /* Info debug kecil di pojok (berguna saat dev & gladi) */
+  #dbg {
+    position:absolute; left:8px; bottom:6px; z-index:9;
+    font:11px/1.4 ui-monospace, Consolas, monospace;
+    color:#5a6699; opacity:.8; white-space:pre;
+  }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <div id="idle">
+      <div class="logo">TORANG</div>
+      <div class="label"></div>
+    </div>
+    <video id="video" muted playsinline preload="auto"></video>
+    <div id="dbg"></div>
+  </div>
+  <script src="./tv.js"></script>
+</body>
+</html>
