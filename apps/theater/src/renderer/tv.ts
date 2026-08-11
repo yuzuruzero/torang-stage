@@ -117,3 +117,5 @@ window.torang.onStop(() => {
 });
 
 dbg("siap · menunggu cue");
+
+export {};

@@ -42,6 +42,18 @@ interface TorangBridge {
   onStatus: (cb: (s: PanelStatus) => void) => void;
   sendEvent: (p: TvEvent) => void;
   sendIntent: (intent: unknown) => void;
+
+  // mode student
+  studentBoot: () => Promise<unknown>;
+  studentOptions: () => Promise<unknown>;
+  studentLogin: (p: { student_id: string; seat_id: string }) => Promise<unknown>;
+  onStudentStatus: (cb: (data: unknown) => void) => void;
+
+  // overlay & glow
+  onOverlayShow: (cb: (data: unknown) => void) => void;
+  overlayOpen: () => void;
+  overlayShown: (p: { cue_id: string }) => void;
+  onGlowShow: (cb: (data: unknown) => void) => void;
 }
 
 interface Window {

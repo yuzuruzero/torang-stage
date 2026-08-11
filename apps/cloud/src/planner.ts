@@ -107,9 +107,15 @@ export function planPlayModule(
     session: ctx.session,
   };
 
+  // Hanya target TV yang memindahkan "posisi Torang" di show-state.
+  // Materi ke komp murid = konten dikirim (jendela sopan), BUKAN pindah
+  // karakter — pindah karakter ke komp (W11 "nyelem") datang di fase 2.
+  const movesCharacter = target.startsWith("tv");
   return {
     cues: [cue],
-    state: { screen: target, lastDir: null, activeModule: mod.id },
+    state: movesCharacter
+      ? { screen: target, lastDir: null, activeModule: mod.id }
+      : { ...ctx.state, activeModule: mod.id },
   };
 }
 
@@ -189,12 +195,64 @@ export function planMove(ctx: PlanContext, to: string): Plan {
   };
 }
 
+/**
+ * "Torang, sapa komp lima" — OVERLAY_GREET teks di layar murid.
+ * Keputusan #17: TEKS SAJA di komp (tanpa audio komp); nama dari login.
+ * `nama` di-resolve pemanggil dari binding kursi (null = belum terikat).
+ */
+export function planSapa(ctx: PlanContext, target: string, nama: string | null): Plan {
+  if (!target.startsWith("komp")) {
+    throw new PlanError(`sapa hanya untuk komp murid, bukan ${target}`);
+  }
+  const cue: Cue = {
+    cue_id: ctx.seq(),
+    type: "OVERLAY_GREET",
+    targets: [target],
+    start_at: iso(ctx.now + ctx.leadMs),
+    payload: {
+      style: "greet",
+      title: nama ? `Halo, ${nama}!` : "Halo!",
+      subtitle: nama
+        ? "Torang menyapa kamu dari panggung"
+        : "kursi ini belum terikat nama (login dulu)",
+      duration_ms: 6000,
+    },
+    session: ctx.session,
+  };
+  return {
+    cues: [cue],
+    state: ctx.state,
+    ...(nama ? {} : { note: `${target} belum login — sapaan generik` }),
+  };
+}
+
+/** GLOW bingkai layar murid (preset whitelist; W1 memakai ini per kursi). */
+export function planGlow(
+  ctx: PlanContext,
+  target: string,
+  preset: string,
+  durationMs: number
+): Plan {
+  if (target.startsWith("tv") || target === "all_tv" || target === "teacher") {
+    throw new PlanError(`glow hanya untuk layar murid, bukan ${target}`);
+  }
+  const cue: Cue = {
+    cue_id: ctx.seq(),
+    type: "GLOW",
+    targets: [target],
+    start_at: iso(ctx.now + ctx.leadMs),
+    payload: { preset, duration_ms: durationMs },
+    session: ctx.session,
+  };
+  return { cues: [cue], state: ctx.state };
+}
+
 /** "Torang, stop" — semua kembali idle. */
 export function planStop(ctx: PlanContext): Plan {
   const cue: Cue = {
     cue_id: ctx.seq(),
     type: "STOP",
-    targets: ["all_tv", "teacher"],
+    targets: ["all_tv", "teacher", "all_student"],
     start_at: iso(ctx.now), // STOP tidak menunggu lead — langsung
     payload: {},
     session: ctx.session,

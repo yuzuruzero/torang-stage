@@ -126,6 +126,9 @@ export type ScenePayload = {
 // Intent (panel/hotkey/voice → cloud). Grammar §5 memetakan ke sini.
 // ---------------------------------------------------------------------------
 
+export const GlowPresetSchema = z.enum(["pulse", "breathe", "wave"]);
+export type GlowPreset = z.infer<typeof GlowPresetSchema>;
+
 export const IntentSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("PLAY_MODULE"),
@@ -137,6 +140,15 @@ export const IntentSchema = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("STOP") }),
   z.object({ intent: z.literal("GO") }),
   z.object({ intent: z.literal("REPLAY") }),
+  /** "Torang, sapa komp lima" — OVERLAY_GREET, nama dari login (§5 W3). */
+  z.object({ intent: z.literal("SAPA"), target: TargetSchema }),
+  /** GLOW pinggir layar murid (preset whitelist). */
+  z.object({
+    intent: z.literal("GLOW"),
+    target: TargetSchema,
+    preset: GlowPresetSchema.default("pulse"),
+    duration_ms: z.number().int().positive().max(60_000).default(4000),
+  }),
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 

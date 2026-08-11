@@ -11,17 +11,12 @@
 import { app, globalShortcut, ipcMain } from "electron";
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
-import {
-  CueSchema,
-  expandTargets,
-  ManifestSchema,
-  TV_TARGETS,
-  type Cue,
-} from "@torang/shared";
+import { CueSchema, expandTargets, TV_TARGETS, type Cue } from "@torang/shared";
 import { loadTheaterConfig, type TheaterConfig } from "./config.js";
 import { createTeacherWindows, type TeacherWindows } from "./windows.js";
 import { CloudClient } from "./ws-client.js";
+import { loadAssetMap, resolveAssetUrl } from "./assets.js";
+import { StudentController } from "./student.js";
 
 const DIST_DIR = __dirname; // dist/
 const APP_ROOT = path.resolve(DIST_DIR, "..");
@@ -35,38 +30,15 @@ const VERSION: string = (() => {
 
 const cfg: TheaterConfig = loadTheaterConfig(APP_ROOT);
 
-// ---------------------------------------------------------------------------
-// Manifest aset lokal → peta nama aset → file
-// ---------------------------------------------------------------------------
-const assetFiles = new Map<string, string>(); // "m99_materi_tes" → "m99_materi_tes.mp4"
-
-function loadAssetMap(): void {
-  assetFiles.clear();
-  const p = path.join(cfg.assets_dir, "manifest.json");
-  try {
-    const manifest = ManifestSchema.parse(JSON.parse(fs.readFileSync(p, "utf8")));
-    for (const mod of manifest.modules) {
-      for (const a of mod.assets) {
-        assetFiles.set(a.file.replace(/\.[^.]+$/, ""), a.file);
-      }
-      for (const a of mod.audio) {
-        assetFiles.set(a.file.replace(/\.[^.]+$/, ""), a.file);
-        assetFiles.set(a.file, a.file); // audio dirujuk pakai nama file penuh
-      }
-    }
-    console.log(`[theater] manifest: ${manifest.release}, ${assetFiles.size} aset dikenal`);
-  } catch (err) {
-    console.error(`[theater] gagal baca manifest aset (${p}):`, (err as Error).message);
-  }
-}
-
-function resolveAssetUrl(assetOrFile: string): string | null {
-  const file = assetFiles.get(assetOrFile);
-  if (!file) return null;
-  const abs = path.join(cfg.assets_dir, file);
-  if (!fs.existsSync(abs)) return null;
-  return pathToFileURL(abs).href;
-}
+// Multi-instance di satu mesin dev (teacher + beberapa student):
+// pisahkan userData per peran/kursi supaya cache Chromium tidak saling kunci.
+app.setPath(
+  "userData",
+  path.join(
+    app.getPath("userData"),
+    cfg.mode === "student" ? `student-${cfg.seat ?? "tanpa-kursi"}` : "teacher"
+  )
+);
 
 // ---------------------------------------------------------------------------
 // Jendela + agregasi ACK
@@ -238,16 +210,19 @@ ipcMain.on("panel:intent", (_e, intent: Record<string, unknown>) => {
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
+let studentCtl: StudentController | null = null;
+
 app.whenReady().then(() => {
-  if (cfg.mode !== "teacher") {
-    console.error(
-      "[theater] mode student menyusul (fase 1 langkah 3) — jalankan dengan mode teacher dulu."
+  if (cfg.mode === "student") {
+    studentCtl = new StudentController(cfg, DIST_DIR, VERSION);
+    studentCtl.start();
+    console.log(
+      `[theater] mode=student kursi=${cfg.seat ?? "(pilih di form)"} cloud=${cfg.cloud_api}`
     );
-    app.quit();
     return;
   }
 
-  loadAssetMap();
+  loadAssetMap(cfg.assets_dir);
   wins = createTeacherWindows(cfg, DIST_DIR);
 
   client = new CloudClient({
@@ -280,6 +255,7 @@ app.whenReady().then(() => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   client?.stop();
+  studentCtl?.stop();
 });
 
 app.on("window-all-closed", () => {

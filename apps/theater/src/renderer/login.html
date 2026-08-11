@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Torang — Kelas</title>
+<style>
+  :root { --bg:#101528; --card:#1a2140; --line:#2c3564; --txt:#e8ebff; }
+  body { margin:0; font:14px/1.5 system-ui, "Segoe UI", sans-serif; background:var(--bg); color:var(--txt); padding:16px; }
+  h1 { font-size:16px; margin:0 0 2px; }
+  .sub { color:#7580b3; font-size:12px; margin-bottom:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
+  .nama { display:block; width:100%; text-align:left; background:#141a36; color:var(--txt);
+          border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin:0 0 6px; cursor:pointer; font-size:14px; }
+  .nama:hover { background:#1d2650; }
+  .nama.pilih { background:#2b3a7e; border-color:#40509e; }
+  .nama .kursi-info { color:#7580b3; font-size:11px; float:right; }
+  select, button.masuk { width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--line);
+          background:#141a36; color:var(--txt); font-size:14px; }
+  button.masuk { background:#2b3a7e; border-color:#40509e; cursor:pointer; margin-top:8px; }
+  button.masuk:disabled { opacity:.45; cursor:default; }
+  #pesan { min-height:1.4em; color:#ffd97d; font-size:13px; margin-top:8px; }
+  #sesudah { display:none; text-align:center; padding:18px 6px; }
+  #sesudah .halo { font-size:20px; font-weight:700; margin:8px 0 2px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:99px; margin-right:6px; background:#d14343; }
+  .dot.online { background:#43d17c; }
+  .muted { color:#7580b3; font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>Selamat datang di kelas Torang</h1>
+  <div class="sub">Pilih namamu, lalu masuk. Layar ini tidak akan mengganggu — Torang cuma mengetuk kalau perlu.</div>
+
+  <div id="form">
+    <div class="card">
+      <div class="muted" style="margin-bottom:6px">Siapa kamu?</div>
+      <div id="daftar">memuat daftar…</div>
+    </div>
+    <div class="card">
+      <div class="muted" style="margin-bottom:6px">Kursi</div>
+      <select id="kursi"></select>
+      <button class="masuk" id="masuk" disabled>Masuk kelas</button>
+      <div id="pesan"></div>
+    </div>
+  </div>
+
+  <div id="sesudah" class="card">
+    <div><span id="dot" class="dot"></span><span id="status">menyambung…</span></div>
+    <div class="halo" id="halo"></div>
+    <div class="muted" id="kursiku"></div>
+    <div class="muted" style="margin-top:10px">Biarkan jendela ini terbuka. Kecilkan saja — panggung yang akan menyapamu.</div>
+  </div>
+
+  <script src="./login.js"></script>
+</body>
+</html>

@@ -51,3 +51,5 @@ window.torang.onAudio((a) => {
 // Tombol → intent (dipanggil dari HTML)
 (window as unknown as Record<string, unknown>).intent = (i: unknown) =>
   window.torang.sendIntent(i);
+
+export {};

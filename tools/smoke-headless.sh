@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Smoke test headless (dipakai di sandbox/CI — bukan di mesin Hadi):
-# cloud + app teacher di Xvfb, verifikasi jalur cue lewat ACK di /api/state,
-# plus screenshot untuk mata manusia.
+# Smoke test headless (sandbox/CI — bukan di mesin Hadi):
+# cloud + app teacher + app student (auto-login) di Xvfb.
+# Verifikasi jalur cue lewat ACK di /api/state + screenshot untuk mata manusia.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -24,20 +24,19 @@ shot() {
 }
 
 cleanup() {
-  kill "${PID_APP:-0}" "${PID_CLOUD:-0}" "${PID_XVFB:-0}" 2>/dev/null || true
-  pkill -f "apps/cloud/src/index.ts" 2>/dev/null || true
+  kill "${PID_STU:-0}" "${PID_APP:-0}" "${PID_CLOUD:-0}" "${PID_XVFB:-0}" 2>/dev/null || true
   pkill -f "electron --no-sandbox" 2>/dev/null || true
 }
 trap cleanup EXIT
 
 echo "== 1. cloud =="
+rm -f apps/cloud/logs/bindings-*.json   # mulai bersih tiap smoke
 # --import tsx = satu proses node (kill langsung mengenai server, tanpa wrapper)
 node --import tsx apps/cloud/src/index.ts >"$OUT/cloud.log" 2>&1 &
 PID_CLOUD=$!
 for i in $(seq 1 30); do curl -s "$API/api/state" >/dev/null && break; sleep 0.5; done
-state | head -c 200; echo
 
-echo "== 2. Xvfb + app teacher =="
+echo "== 2. Xvfb + teacher + student (auto-login Andi→komp1) =="
 Xvfb "$DISP" -screen 0 1920x1080x24 >/dev/null 2>&1 &
 PID_XVFB=$!
 sleep 1
@@ -45,48 +44,68 @@ DISPLAY="$DISP" ./node_modules/.bin/electron --no-sandbox --disable-gpu apps/the
   >"$OUT/theater.log" 2>&1 &
 PID_APP=$!
 
-echo "-- tunggu endpoint teacher-1 online --"
-ONLINE=""
+cat > "$OUT/student.config.json" <<CFG
+{
+  "mode": "student",
+  "cloud_ws": "ws://127.0.0.1:8787/ws",
+  "cloud_api": "http://127.0.0.1:8787",
+  "room_key": "$KEY",
+  "branch": "dev",
+  "room": "r1",
+  "seat": "komp1",
+  "auto_login": { "student_id": "s01" }
+}
+CFG
+DISPLAY="$DISP" ./node_modules/.bin/electron --no-sandbox --disable-gpu apps/theater \
+  --config="$OUT/student.config.json" >"$OUT/student.log" 2>&1 &
+PID_STU=$!
+
+echo "-- tunggu teacher-1 & komp1 online --"
 for i in $(seq 1 60); do
-  if state | grep -q '"teacher-1"'; then ONLINE=ya; break; fi
+  if state | grep -q '"teacher-1"' && state | grep -q '"komp1"'; then break; fi
   sleep 0.5
 done
-[ -n "$ONLINE" ] || { echo "GAGAL: endpoint tidak pernah online"; tail -20 "$OUT/theater.log"; exit 1; }
-echo "endpoint online ✔"
+state | grep -q '"teacher-1"' || { echo "GAGAL: teacher offline"; tail -20 "$OUT/theater.log"; exit 1; }
+state | grep -q '"komp1"' || { echo "GAGAL: student offline"; tail -30 "$OUT/student.log"; exit 1; }
+echo "kedua endpoint online ✔"
+state | grep -q '"nama":"Andi"' && echo "binding Andi→komp1 ✔"
 sleep 1
 shot 01-idle
 
-echo "== 3. GO (PLAY materi tes di TV1) =="
+echo "== 3. GO: materi TV1 =="
 intent '{"intent":"GO"}'; echo
-sleep 3   # lead 1.5s + 1.5s ke tengah materi
-shot 02-materi-tv1
-sleep 4   # materi 4s selesai → played
-state > "$OUT/state-after-play.json"
+sleep 3; shot 02-materi-tv1; sleep 4
 
-echo "== 4. GO (MOVE ke TV3) =="
+echo "== 4. GO: pindah TV3 =="
 intent '{"intent":"GO"}'; echo
-sleep 3   # exit di tv1 + enter mulai di tv3
-shot 03-move-exit-enter
-sleep 3
-shot 04-idle-loop-tv3
-state > "$OUT/state-after-move.json"
+sleep 3; shot 03-move-exit-enter; sleep 3
 
-echo "== 5. STOP =="
-intent '{"intent":"STOP"}'; echo
-sleep 1
-shot 05-stop-idle
-state > "$OUT/state-after-stop.json"
+echo "== 5. GO: sapa komp1 =="
+intent '{"intent":"GO"}'; echo
+sleep 2.5; shot 04-sapa-overlay; sleep 4
+
+echo "== 6. GO: glow semua =="
+intent '{"intent":"GO"}'; echo
+sleep 2.5; shot 05-glow; sleep 3
+
+echo "== 7. GO: ketuk komp1 (materi via jendela sopan) =="
+intent '{"intent":"GO"}'; echo
+sleep 2.5; shot 06-knock; sleep 1
+
+echo "== 8. GO: balik TV1, lalu GO: STOP =="
+intent '{"intent":"GO"}'; echo
+sleep 4
+intent '{"intent":"GO"}'; echo
+sleep 1; shot 07-stop-idle
+state > "$OUT/state-final.json"
 
 echo "== RINGKASAN ACK =="
 node -e '
-const fs = require("fs");
-for (const f of ["state-after-play","state-after-move","state-after-stop"]) {
-  const s = JSON.parse(fs.readFileSync("/tmp/torang-smoke/"+f+".json","utf8"));
-  console.log("\n### "+f, "| show.screen =", s.show.screen);
-  for (const c of s.recent_cues.slice(0,4).reverse()) {
-    console.log(` ${c.cue_id} ${c.type} → [${c.targets}] aset=${c.asset ?? "-"} ` +
-      c.acks.map(a=>`${a.endpoint_id}:${a.status}${a.detail?" ("+a.detail+")":""}`).join(", "));
-  }
+const s = JSON.parse(require("fs").readFileSync("/tmp/torang-smoke/state-final.json","utf8"));
+console.log("show.screen =", s.show.screen, "| bindings =", JSON.stringify(s.bindings));
+for (const c of [...s.recent_cues].reverse()) {
+  console.log(` ${c.cue_id} ${c.type} → [${c.targets}] ` +
+    c.acks.map(a=>`${a.endpoint_id}:${a.status}${a.detail?" ("+a.detail+")":""}`).join(", "));
 }
 '
 echo

@@ -26,13 +26,16 @@ import { loadConfig } from "./config.js";
 import { DEFAULT_GEOMETRY, initialShowState, type ShowState } from "./show-state.js";
 import {
   PlanError,
+  planGlow,
   planMove,
   planPlayModule,
+  planSapa,
   planStop,
   type Plan,
   type PlanContext,
 } from "./planner.js";
 import { Registry } from "./registry.js";
+import { Roster } from "./roster.js";
 import { z } from "zod";
 
 const cfg = loadConfig();
@@ -67,6 +70,7 @@ function loadRundown() {
 let manifest = loadManifest();
 const rundown = loadRundown();
 let rundownPointer = 0;
+const roster = new Roster(cfg.cohortPath, cfg.logDir);
 
 // --------------------------------------------------------------------------
 // State inti
@@ -191,6 +195,20 @@ function executeIntent(intent: Intent): { plan: Plan; note?: string } {
       const plan = planStop(planContext());
       return { plan };
     }
+    case "SAPA": {
+      const binding = roster.bindingBySeat(intent.target);
+      const plan = planSapa(planContext(), intent.target, binding?.nama ?? null);
+      return { plan };
+    }
+    case "GLOW": {
+      const plan = planGlow(
+        planContext(),
+        intent.target,
+        intent.preset,
+        intent.duration_ms
+      );
+      return { plan };
+    }
     case "GO": {
       if (rundownPointer >= rundown.steps.length) {
         return {
@@ -270,6 +288,12 @@ app.get("/api/state", async () => ({
   server_now: Date.now(),
   session,
   show: { screen: show.screen, last_dir: show.lastDir, active_module: show.activeModule },
+  bindings: roster.list().map((b) => ({
+    seat_id: b.seat_id,
+    nama: b.nama,
+    student_id: b.student_id,
+    ts: b.ts,
+  })),
   endpoints: registry.info(),
   rundown: {
     name: rundown.name,
@@ -325,6 +349,48 @@ app.post("/api/intent", async (req, reply) => {
     console.error("[cloud] intent gagal:", err);
     return reply.code(500).send({ ok: false, error: "kesalahan internal" });
   }
+});
+
+// --------------------------------------------------------------------------
+// Login sederhana (§8 subset): daftar cohort + klaim kursi
+// --------------------------------------------------------------------------
+app.get("/api/login/options", async (req, reply) => {
+  if (!keyOk(req.headers["x-room-key"])) {
+    return reply.code(401).send({ ok: false, error: "room_key salah" });
+  }
+  return { ok: true, ...roster.loginOptions() };
+});
+
+const LoginBody = z.object({
+  room_key: z.string(),
+  student_id: z.string().min(1),
+  seat_id: z.string().min(1),
+});
+
+app.post("/api/login", async (req, reply) => {
+  const body = LoginBody.safeParse(req.body);
+  if (!body.success) {
+    return reply.code(400).send({ ok: false, error: "body tidak valid" });
+  }
+  if (!keyOk(body.data.room_key)) {
+    return reply.code(401).send({ ok: false, error: "room_key salah" });
+  }
+  const res = roster.login(body.data.student_id, body.data.seat_id);
+  if (!res.ok) return reply.code(409).send({ ok: false, error: res.error });
+  logLine({ t: Date.now(), event: "login", binding: res.binding });
+  return { ok: true, binding: res.binding, session };
+});
+
+app.post("/api/unbind", async (req, reply) => {
+  const body = z
+    .object({ room_key: z.string(), seat_id: z.string().min(1) })
+    .safeParse(req.body);
+  if (!body.success || !keyOk(body.data.room_key)) {
+    return reply.code(401).send({ ok: false, error: "room_key salah" });
+  }
+  const had = roster.unbind(body.data.seat_id);
+  logLine({ t: Date.now(), event: "unbind", seat: body.data.seat_id });
+  return { ok: true, removed: had };
 });
 
 app.post("/api/rundown/reset", async (req, reply) => {

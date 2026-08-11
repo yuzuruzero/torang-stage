@@ -8,9 +8,10 @@ Sumber kebenaran produk: `panggung-torang-MASTER-programmer.md` (folder
 `torangapp`) — semua keputusan arsitektur TERKUNCI di sana. Keputusan teknis
 yang jadi wewenang programmer (§15) dicatat di [`DECISIONS.md`](DECISIONS.md).
 
-## Status (v0.1.0 — 4 Agu 2026)
+## Status (v0.2.0 — 11 Agu 2026)
 
-Terbangun & teruji (36 unit/e2e test + smoke test Electron headless):
+Terbangun & teruji (54 unit/e2e test + smoke test Electron headless
+teacher+student):
 
 - ✅ Cloud minimal: registry endpoint · WS cue router (`start_at` T+1.5 dtk, ACK
   per cue, timeout jelas) · show-state (arah exit/enter OTOMATIS — disiplin
@@ -20,9 +21,18 @@ Terbangun & teruji (36 unit/e2e test + smoke test Electron headless):
   (sesuai §14: hotkey DULUAN, voice belakangan) + reconnect otomatis.
 - ✅ Modul dummy `m99` alias **"tes"** end-to-end dengan aset placeholder
   (video teks/warna + beep — keputusan #20).
-- ⬜ App student (login + overlay sopan + GLOW) — langkah berikutnya.
-- ⬜ Voice (Whisper + parser + OpenClaw) — terakhir fase 1.
+- ✅ **App student (v0.2.0)**: login sederhana (nama dari daftar cohort + kursi,
+  bisa preset dari config mesin) · binding kursi↔nama TAHAN RESTART · overlay
+  "jendela sopan" (greet bernama & ketukan — **murid yang mengklik** untuk
+  fullscreen, tidak pernah merebut fokus) · GLOW pinggir layar (pulse/breathe/
+  wave, click-through) · intent baru `SAPA` & `GLOW` · STOP membersihkan semua.
+- ⬜ Voice (Whisper + parser + jalur OpenClaw) — terakhir fase 1.
 - ⬜ Deploy `stage.torang.ai` di torang-sg-1 (Docker+Caddy) — setelah stabil lokal.
+
+> Cek manual di Windows asli (tidak bisa diverifikasi di sandbox headless):
+> window GLOW harus TRANSPARAN (di Xvfb jatuh ke hitam — artefak headless).
+> Kalau di mesinmu layar menghitam saat glow, laporkan — fallback 4 bar tepi
+> sudah dirancang.
 
 ## Cara menjalankan (dev, Windows/Linux/mac)
 
@@ -49,9 +59,23 @@ Lalu coba (tombol di panel, atau hotkey global):
 4. Matikan cloud (Ctrl+C) → panel operator menunjukkan **TERPUTUS** dan app
    mencoba sambung ulang — gagal harus JELAS, bukan diam (§12).
 
+**Mencoba mode student di mesin yang sama** (terminal ke-3):
+
+```bash
+npm run dev:student   # window kecil "Selamat datang di kelas Torang"
+```
+
+Pilih nama (daftar dev: Andi, Budi, Citra, …) + kursi (preset `komp1`) → Masuk
+kelas. Lalu dari panel: **Sapa komp1** → kartu "Halo, {nama}!" meluncur masuk
+di pojok tanpa merebut fokus; **Glow semua** → bingkai layar menyala; **Ketuk
+komp1** → kartu ketukan muncul, klik → materi fullscreen, selesai → hilang.
+Tombol GO menjalankan semuanya berurutan dari rundown dummy.
+
 Konfigurasi per mesin: salin `apps/theater/torang-theater.config.example.json`
-→ `torang-theater.config.json` (di-gitignore) dan sesuaikan. Cloud dikonfigurasi
-lewat env `TORANG_*` (lihat `apps/cloud/src/config.ts`).
+(atau `torang-student.config.example.json`) → `torang-theater.config.json`
+(di-gitignore) dan sesuaikan; app juga menerima `--config=path`. Cloud
+dikonfigurasi lewat env `TORANG_*` (lihat `apps/cloud/src/config.ts`).
+Daftar murid dev: `apps/cloud/config/cohort-dev.json`.
 
 ## Test
 

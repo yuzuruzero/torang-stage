@@ -3,7 +3,9 @@
   "steps": [
     { "label": "Puter materi 'tes' di TV1", "intent": { "intent": "PLAY_MODULE", "alias": "tes", "target": "tv1" } },
     { "label": "Pindah ke TV3 (arah otomatis)", "intent": { "intent": "MOVE", "to": "tv3" } },
-    { "label": "Pindah ke TV2", "intent": { "intent": "MOVE", "to": "tv2" } },
+    { "label": "Sapa komp1 (nama dari login)", "intent": { "intent": "SAPA", "target": "komp1" } },
+    { "label": "Glow semua murid", "intent": { "intent": "GLOW", "target": "all_student", "preset": "pulse", "duration_ms": 4000 } },
+    { "label": "Puter materi 'tes' di komp1 (jendela sopan)", "intent": { "intent": "PLAY_MODULE", "alias": "tes", "target": "komp1" } },
     { "label": "Balik ke TV1", "intent": { "intent": "MOVE", "to": "tv1" } },
     { "label": "Stop — semua idle", "intent": { "intent": "STOP" } }
   ]

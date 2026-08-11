@@ -15,6 +15,10 @@ export interface TheaterConfig {
   /** true = 4 window kecil di 1 monitor (dev); false + kiosk = fullscreen per display. */
   dev_layout: boolean;
   kiosk: boolean;
+  /** Mode student: kursi preset dari config mesin (murid tinggal pilih nama). */
+  seat: string | null;
+  /** Mode student: login otomatis tanpa klik (dev/smoke test) — student_id dari cohort. */
+  auto_login: { student_id: string } | null;
 }
 
 export function loadTheaterConfig(appRoot: string): TheaterConfig {
@@ -29,8 +33,15 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
     assets_dir: path.join(appRoot, "assets-dev"),
     dev_layout: true,
     kiosk: false,
+    seat: null,
+    auto_login: null,
   };
+  // --config=path CLI (aman untuk PowerShell/cmd, tanpa env var)
+  const cliCfg = process.argv
+    .find((a) => a.startsWith("--config="))
+    ?.slice("--config=".length);
   const file =
+    (cliCfg && path.resolve(appRoot, cliCfg)) ??
     process.env.TORANG_THEATER_CONFIG ??
     path.join(appRoot, "torang-theater.config.json");
   if (fs.existsSync(file)) {

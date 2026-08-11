@@ -18,6 +18,7 @@ export interface CloudConfig {
   overlapMs: number;
   manifestPath: string;
   rundownPath: string;
+  cohortPath: string;
   logDir: string;
   ackTimeoutMs: number;
 }
@@ -38,6 +39,8 @@ export function loadConfig(env = process.env): CloudConfig {
       path.join(REPO_ROOT, "apps", "theater", "assets-dev", "manifest.json"),
     rundownPath:
       env.TORANG_RUNDOWN ?? path.join(APP_ROOT, "config", "rundown-dummy.json"),
+    cohortPath:
+      env.TORANG_COHORT ?? path.join(APP_ROOT, "config", "cohort-dev.json"),
     logDir: env.TORANG_LOG_DIR ?? path.join(APP_ROOT, "logs"),
     ackTimeoutMs: Number(env.TORANG_ACK_TIMEOUT_MS ?? 3000),
   };

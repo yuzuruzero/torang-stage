@@ -71,3 +71,25 @@ telat 0–1 ms (satu mesin).
 ## D13 · EOL & git
 `.gitattributes`: `*.sh` LF, `*.bat`/`*.ps1` CRLF (pelajaran repo torang-murid);
 aset biner ditandai `binary`. Skrip `.sh` di-`chmod +x` sebelum commit.
+
+## D14 · (v0.2.0, amandemen D3) Roster/binding fase 1 = file JSON, bukan DB
+Login sederhana §8 disimpan `apps/cloud/logs/bindings-{cohort}.json` (tahan
+restart); daftar murid = `config/cohort-dev.json` (diinput admin/implementor).
+Alasan: dev di Windows Hadi tanpa Docker/DB; datanya kecil; BENTUKNYA mengikuti
+tabel §8 (`students`, `seats`, `bindings`) supaya migrasi ke Postgres di
+torang-sg-1 mekanis. Field `client_id` sudah ada (diisi fase 2 file-watcher).
+
+## D15 · (v0.2.0) Keputusan mode student
+- **room_key hanya di proses main** — renderer login memanggil API lewat IPC,
+  tidak pernah memegang kunci (least privilege).
+- Overlay tampil dengan `showInactive()` — sopan, TIDAK merebut fokus (#6).
+- Ketukan (PLAY_VIDEO ke komp) **click-gated**: ACK berhenti di `scheduled`
+  sampai murid mengklik → `played` setelah materi selesai. Status jujur:
+  panel melihat siapa yang belum membuka.
+- Cue yang terpotong STOP tetap berstatus `scheduled` tanpa `played` (dikenal;
+  kandidat status `stopped` di protokol menyusul bila mengganggu di gladi).
+- GLOW = satu window fullscreen transparan click-through. **Verifikasi
+  transparansi di Windows asli wajib** (di Xvfb headless jatuh ke hitam —
+  artefak compositing). Fallback yang sudah dirancang bila bermasalah:
+  4 window bar tepi (menghitam pun hanya menutup 14 px pinggir).
+- Multi-instance satu mesin dev: `userData` dipisah per peran/kursi.

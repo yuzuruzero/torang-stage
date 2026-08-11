@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { CueSchema, ManifestSchema, type Manifest } from "@torang/shared";
 import {
   PlanError,
+  planGlow,
   planMove,
   planPlayModule,
+  planSapa,
   planStop,
   type PlanContext,
 } from "../src/planner.js";
@@ -64,6 +66,48 @@ describe("planPlayModule", () => {
 
   it("alias tak dikenal → PlanError (kosakata dari manifest)", () => {
     expect(() => planPlayModule(ctx(), "ngawur", "tv1")).toThrow(PlanError);
+  });
+
+  it("puter di komp murid TIDAK memindahkan posisi Torang (bukan 'nyelem')", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99" };
+    const plan = planPlayModule(ctx(state), "tes", "komp3");
+    expect(plan.cues[0]!.targets).toEqual(["komp3"]);
+    expect(plan.state.screen).toBe("tv1"); // Torang tetap di TV1
+  });
+});
+
+describe("planSapa (§5 'sapa' — W3)", () => {
+  it("dengan nama dari binding → OVERLAY_GREET berisi nama, tanpa audio komp", () => {
+    const plan = planSapa(ctx(), "komp5", "Citra");
+    const cue = CueSchema.parse(plan.cues[0]);
+    expect(cue.type).toBe("OVERLAY_GREET");
+    expect(cue.targets).toEqual(["komp5"]);
+    expect(cue.payload.title).toBe("Halo, Citra!");
+    expect(cue.audio).toBeUndefined(); // keputusan #17: teks saja di komp
+  });
+
+  it("kursi belum login → sapaan generik + note", () => {
+    const plan = planSapa(ctx(), "komp5", null);
+    expect(plan.cues[0]!.payload.title).toBe("Halo!");
+    expect(plan.note).toMatch(/belum login/);
+  });
+
+  it("sapa ke TV → PlanError", () => {
+    expect(() => planSapa(ctx(), "tv1", "Citra")).toThrow(PlanError);
+  });
+});
+
+describe("planGlow", () => {
+  it("glow all_student valid + preset & durasi di payload", () => {
+    const plan = planGlow(ctx(), "all_student", "wave", 5000);
+    const cue = CueSchema.parse(plan.cues[0]);
+    expect(cue.type).toBe("GLOW");
+    expect(cue.payload).toEqual({ preset: "wave", duration_ms: 5000 });
+  });
+
+  it("glow ke TV/teacher → PlanError", () => {
+    expect(() => planGlow(ctx(), "tv2", "pulse", 4000)).toThrow(PlanError);
+    expect(() => planGlow(ctx(), "teacher", "pulse", 4000)).toThrow(PlanError);
   });
 });
 
@@ -127,11 +171,11 @@ describe("planMove", () => {
 });
 
 describe("planStop", () => {
-  it("STOP ke semua TV + teacher, show-state kembali kosong", () => {
+  it("STOP ke semua TV + teacher + semua murid, show-state kembali kosong", () => {
     const state: ShowState = { screen: "tv3", lastDir: "right", activeModule: "m99" };
     const plan = planStop(ctx(state));
     expect(plan.cues[0]!.type).toBe("STOP");
-    expect(plan.cues[0]!.targets).toEqual(["all_tv", "teacher"]);
+    expect(plan.cues[0]!.targets).toEqual(["all_tv", "teacher", "all_student"]);
     expect(plan.state.screen).toBeNull();
   });
 });

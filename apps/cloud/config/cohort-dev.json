@@ -1,0 +1,11 @@
+{
+  "cohort": "2026-08-DEV",
+  "students": [
+    { "id": "s01", "nama": "Andi" },
+    { "id": "s02", "nama": "Budi" },
+    { "id": "s03", "nama": "Citra" },
+    { "id": "s04", "nama": "Dewi" },
+    { "id": "s05", "nama": "Eka" },
+    { "id": "s06", "nama": "Farhan" }
+  ]
+}

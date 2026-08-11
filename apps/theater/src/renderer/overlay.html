@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin:0; background:transparent; overflow:hidden; }
+  #kartu {
+    box-sizing:border-box; width:384px; margin:8px;
+    background:linear-gradient(135deg, #1a2140 0%, #232c58 100%);
+    border:1px solid #40509e; border-radius:14px; padding:16px 18px;
+    font-family:system-ui, "Segoe UI", sans-serif; color:#e8ebff;
+    box-shadow:0 8px 30px #000a;
+    transform:translateX(420px); opacity:0;
+    transition:transform .45s cubic-bezier(.2,.9,.25,1.15), opacity .35s;
+  }
+  #kartu.tampil { transform:translateX(0); opacity:1; }
+  #kartu.knock { cursor:pointer; }
+  #kartu.knock:hover { border-color:#f2a33c; }
+  #judul { font-size:19px; font-weight:800; margin-bottom:3px; }
+  #sub { font-size:13px; color:#9fa8d8; }
+  #hint { font-size:11px; color:#f2a33c; margin-top:8px; display:none; }
+  .knock #hint { display:block; }
+</style>
+</head>
+<body>
+  <div id="kartu">
+    <div id="judul"></div>
+    <div id="sub"></div>
+    <div id="hint">▶ klik kartu ini untuk membuka</div>
+  </div>
+  <script src="./overlay.js"></script>
+</body>
+</html>

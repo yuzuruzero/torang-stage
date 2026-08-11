@@ -1,0 +1,10 @@
+{
+  "mode": "student",
+  "cloud_ws": "ws://127.0.0.1:8787/ws",
+  "cloud_api": "http://127.0.0.1:8787",
+  "room_key": "dev-room-key",
+  "branch": "dev",
+  "room": "r1",
+  "seat": "komp1",
+  "auto_login": null
+}
