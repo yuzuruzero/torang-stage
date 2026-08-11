@@ -82,7 +82,51 @@ export class Roster {
   }
 
   /**
-   * Login murid: klaim kursi. Aturan:
+   * Login murid MENGETIK NAMA SENDIRI (keputusan #14: "ketik nama + nomor
+   * kursi"). Kursi yang sudah terisi DIGANTI — yang mengetik duduk di PC itu
+   * (satu PC satu kursi), jadi ini kasus koreksi nama / pergantian murid.
+   */
+  loginByName(
+    namaMentah: string,
+    seatId: string
+  ): { ok: true; binding: Binding; note?: string } | { ok: false; error: string } {
+    const nama = namaMentah.trim().replace(/\s+/g, " ");
+    if (nama.length < 2 || nama.length > 24) {
+      return { ok: false, error: "nama 2-24 huruf ya" };
+    }
+    if (!/^[\p{L}\p{N} .'-]+$/u.test(nama)) {
+      return { ok: false, error: "nama hanya huruf/angka/spasi/.'-" };
+    }
+    if (!KOMP_TARGETS.includes(seatId)) {
+      return { ok: false, error: `kursi tidak dikenal: ${seatId}` };
+    }
+    const lama = this.bySeat.get(seatId);
+    const binding: Binding = {
+      seat_id: seatId,
+      student_id: `w-${seatId}`, // identitas kursi; nama = label (pola client_id §C)
+      nama,
+      client_id: lama?.client_id ?? null,
+      ts: Date.now(),
+    };
+    this.bySeat.set(seatId, binding);
+    this.save();
+    return {
+      ok: true,
+      binding,
+      ...(lama && lama.nama !== nama ? { note: `menggantikan "${lama.nama}"` } : {}),
+    };
+  }
+
+  /** Reset SEMUA binding (kelas baru — murid berikutnya pakai nama berbeda). */
+  resetAll(): number {
+    const n = this.bySeat.size;
+    this.bySeat.clear();
+    this.save();
+    return n;
+  }
+
+  /**
+   * Login lewat daftar cohort (slot e-learning kelak). Aturan:
    * - kursi dipakai murid LAIN → tolak (implementor yang menengahi);
    * - murid yang sama login ulang (kursi sama/beda) → pindahkan (restart normal).
    */

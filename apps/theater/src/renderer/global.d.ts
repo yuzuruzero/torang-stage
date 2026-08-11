@@ -48,8 +48,14 @@ interface TorangBridge {
   // mode student
   studentBoot: () => Promise<unknown>;
   studentOptions: () => Promise<unknown>;
-  studentLogin: (p: { student_id: string; seat_id: string }) => Promise<unknown>;
+  studentLogin: (p: {
+    nama?: string;
+    student_id?: string;
+    seat_id: string;
+  }) => Promise<unknown>;
   onStudentStatus: (cb: (data: unknown) => void) => void;
+  panelUnbind: (seat: string) => void;
+  panelResetMurid: () => void;
 
   // overlay & glow
   onOverlayShow: (cb: (data: unknown) => void) => void;

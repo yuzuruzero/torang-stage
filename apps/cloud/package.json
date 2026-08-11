@@ -1,6 +1,6 @@
 {
   "name": "@torang/cloud",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Cloud control plane Panggung Torang (calon stage.torang.ai): registry, show-state, cue router WS, panel guru sederhana",

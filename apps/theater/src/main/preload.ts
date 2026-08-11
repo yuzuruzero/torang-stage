@@ -17,11 +17,13 @@ contextBridge.exposeInMainWorld("torang", {
     ipcRenderer.on("panel:state", (_e, data) => cb(data)),
   sendEvent: (payload: unknown) => ipcRenderer.send("tv:event", payload),
   sendIntent: (intent: unknown) => ipcRenderer.send("panel:intent", intent),
+  panelUnbind: (seat: string) => ipcRenderer.send("panel:unbind", seat),
+  panelResetMurid: () => ipcRenderer.send("panel:reset-murid"),
 
   // --- mode student (login window; room_key TIDAK pernah lewat sini) ---
   studentBoot: () => ipcRenderer.invoke("student:boot"),
   studentOptions: () => ipcRenderer.invoke("student:options"),
-  studentLogin: (p: { student_id: string; seat_id: string }) =>
+  studentLogin: (p: { nama?: string; student_id?: string; seat_id: string }) =>
     ipcRenderer.invoke("student:login", p),
   onStudentStatus: (cb: (data: unknown) => void) =>
     ipcRenderer.on("student:status", (_e, data) => cb(data)),

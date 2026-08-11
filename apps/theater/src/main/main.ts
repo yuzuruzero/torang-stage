@@ -221,6 +221,36 @@ ipcMain.on("panel:intent", (_e, intent: Record<string, unknown>) => {
   void sendIntent(intent);
 });
 
+async function postRoster(pathname: string, body: Record<string, unknown>): Promise<void> {
+  try {
+    const res = await fetch(`${cfg.cloud_api}${pathname}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ room_key: cfg.room_key, ...body }),
+    });
+    const j = (await res.json()) as { ok: boolean; error?: string; removed?: number | boolean };
+    panelStatus({
+      note: j.ok
+        ? pathname.includes("reset")
+          ? `reset murid: ${j.removed ?? 0} kursi dilepas`
+          : "kursi dilepas"
+        : `⚠ ${j.error}`,
+    });
+  } catch (err) {
+    panelStatus({ note: `⚠ cloud tidak terjangkau: ${(err as Error).message}` });
+  }
+}
+
+ipcMain.on("panel:unbind", (_e, seat: string) => {
+  if (typeof seat === "string" && /^komp([1-9]|1[0-9]|20)$/.test(seat)) {
+    void postRoster("/api/unbind", { seat_id: seat });
+  }
+});
+
+ipcMain.on("panel:reset-murid", () => {
+  void postRoster("/api/roster/reset", {});
+});
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------

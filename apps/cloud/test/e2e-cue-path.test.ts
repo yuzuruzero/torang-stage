@@ -228,25 +228,42 @@ describe("login murid (§8 subset)", () => {
     expect(j.seats).toHaveLength(20);
   });
 
-  it("login Citra → komp3 sukses; Andi rebut komp3 → 409", async () => {
+  it("login KETIK NAMA → komp3 terikat; ketik ulang = ganti nama (+note)", async () => {
     const ok = await fetch(`${BASE}/api/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ room_key: KEY, student_id: "s3", seat_id: "komp3" }),
+      body: JSON.stringify({ room_key: KEY, nama: "Cinta", seat_id: "komp3" }),
     });
     expect(ok.status).toBe(200);
 
-    const konflik = await fetch(`${BASE}/api/login`, {
+    const ganti = await fetch(`${BASE}/api/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ room_key: KEY, student_id: "s1", seat_id: "komp3" }),
+      body: JSON.stringify({ room_key: KEY, nama: "Citra", seat_id: "komp3" }),
     });
-    expect(konflik.status).toBe(409);
+    expect(ganti.status).toBe(200);
+    const j = (await ganti.json()) as { note?: string };
+    expect(j.note).toMatch(/menggantikan "Cinta"/);
 
     const s = await stateNow();
     expect(s.bindings).toEqual([
       expect.objectContaining({ seat_id: "komp3", nama: "Citra" }),
     ]);
+  });
+
+  it("nama tidak valid → 409; tanpa nama & student_id → 409", async () => {
+    const buruk = await fetch(`${BASE}/api/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ room_key: KEY, nama: "<b>x</b>", seat_id: "komp3" }),
+    });
+    expect(buruk.status).toBe(409);
+    const kosong = await fetch(`${BASE}/api/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ room_key: KEY, seat_id: "komp3" }),
+    });
+    expect(kosong.status).toBe(409);
   });
 });
 
@@ -286,5 +303,26 @@ describe("jalur cue student (komp3 = Citra)", () => {
     const s = CueSchema.parse((await student.next((x) => x.kind === "cue")).cue);
     expect(t.type).toBe("STOP");
     expect(s.type).toBe("STOP");
+  });
+});
+
+describe("reset roster (kelas baru)", () => {
+  it("reset kunci salah → 401; kunci benar → semua binding lepas", async () => {
+    const tolak = await fetch(`${BASE}/api/roster/reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ room_key: "salah" }),
+    });
+    expect(tolak.status).toBe(401);
+    expect((await stateNow()).bindings.length).toBeGreaterThan(0);
+
+    const ok = await fetch(`${BASE}/api/roster/reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ room_key: KEY }),
+    });
+    expect(ok.status).toBe(200);
+    expect(((await ok.json()) as { removed: number }).removed).toBeGreaterThan(0);
+    expect((await stateNow()).bindings).toHaveLength(0);
   });
 });

@@ -88,12 +88,12 @@ function renderState(s: StateSnap): void {
     if (pertamaOnline) sel.value = pertamaOnline;
   }
 
-  // Kartu ringkas murid.
+  // Kartu ringkas murid. Nama = ketikan bebas murid → WAJIB di-escape.
   const seats = new Set([...online, ...nama.keys()]);
   const el = $("#daftarMurid");
   if (seats.size === 0) {
     el.textContent =
-      "Belum ada murid online/login. (Murid: jalankan 'Torang Kelas.bat' lalu pilih nama.)";
+      "Belum ada murid online/login. (Murid: jalankan 'Torang Kelas.bat' lalu ketik nama.)";
     return;
   }
   el.innerHTML = [...seats]
@@ -101,9 +101,21 @@ function renderState(s: StateSnap): void {
     .map((seat) => {
       const on = online.has(seat);
       const n = nama.get(seat);
-      return `<span class="murid-baris"><span class="${on ? "on" : "off"}">${on ? "●" : "○"}</span> ${seat}${n ? ` — ${n}` : ""}${on ? "" : " (offline)"}</span>`;
+      return `<span class="murid-baris" data-seat="${seat}" title="klik ✕ untuk lepas kursi ini"><span class="${on ? "on" : "off"}">${on ? "●" : "○"}</span> ${seat}${n ? ` — ${esc(n)}` : ""}${on ? "" : " (offline)"} <span class="lepas" data-seat="${seat}">✕</span></span>`;
     })
     .join("");
+  el.querySelectorAll<HTMLElement>(".lepas").forEach((x) => {
+    x.onclick = () => {
+      const seat = x.dataset.seat!;
+      if (confirm(`Lepas kursi ${seat}? (murid bisa login ulang dengan nama baru)`)) {
+        window.torang.panelUnbind(seat);
+      }
+    };
+  });
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 window.torang.onState((raw) => renderState(raw as StateSnap));
@@ -120,5 +132,14 @@ api.glowKursi = () =>
     preset: "pulse",
     duration_ms: 4000,
   });
+api.resetMurid = () => {
+  if (
+    confirm(
+      "Reset SEMUA murid? Semua binding kursi dilepas — kelas berikutnya login dengan nama baru."
+    )
+  ) {
+    window.torang.panelResetMurid();
+  }
+};
 
 export {};

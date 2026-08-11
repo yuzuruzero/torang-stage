@@ -76,3 +76,47 @@ describe("Roster login sederhana (§8 subset)", () => {
     expect(o.seats).toHaveLength(20);
   });
 });
+
+describe("loginByName (murid KETIK nama — keputusan #14) + reset", () => {
+  let r: ReturnType<typeof buatRoster>;
+  beforeEach(() => {
+    r = buatRoster();
+  });
+
+  it("nama diketik bebas mengikat kursi (trim + rapikan spasi)", () => {
+    const res = r.roster.loginByName("  Siti   Aminah ", "komp4");
+    expect(res.ok).toBe(true);
+    expect(r.roster.bindingBySeat("komp4")?.nama).toBe("Siti Aminah");
+  });
+
+  it("kursi terisi DIGANTI (murid di PC itu yang mengetik) + note", () => {
+    r.roster.loginByName("Andi", "komp4");
+    const res = r.roster.loginByName("Budi", "komp4");
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.note).toMatch(/menggantikan "Andi"/);
+    expect(r.roster.bindingBySeat("komp4")?.nama).toBe("Budi");
+  });
+
+  it("validasi nama: kependekan / karakter aneh ditolak", () => {
+    expect(r.roster.loginByName("A", "komp1").ok).toBe(false);
+    expect(r.roster.loginByName("<script>x</script>", "komp1").ok).toBe(false);
+    expect(r.roster.loginByName("Bagus", "tv1").ok).toBe(false);
+  });
+
+  it("client_id kursi dipertahankan saat ganti nama (resume telemetri)", () => {
+    r.roster.loginByName("Andi", "komp4");
+    const b = r.roster.bindingBySeat("komp4")!;
+    b.client_id = "uuid-123"; // simulasi binding telemetri fase 2
+    r.roster.loginByName("Andi Baru", "komp4");
+    expect(r.roster.bindingBySeat("komp4")?.client_id).toBe("uuid-123");
+  });
+
+  it("resetAll melepas semua kursi + TAHAN RESTART", () => {
+    r.roster.loginByName("Andi", "komp1");
+    r.roster.loginByName("Budi", "komp2");
+    expect(r.roster.resetAll()).toBe(2);
+    expect(r.roster.list()).toHaveLength(0);
+    const kedua = new Roster(r.cohortFile, r.dir); // simulasi cloud restart
+    expect(kedua.list()).toHaveLength(0);
+  });
+});

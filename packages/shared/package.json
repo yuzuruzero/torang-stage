@@ -1,6 +1,6 @@
 {
   "name": "@torang/shared",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Protokol cue & skema pesan Panggung Torang — dipakai cloud dan app (validasi dua sisi)",

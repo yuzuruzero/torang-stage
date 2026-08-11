@@ -53,7 +53,7 @@ cat > "$OUT/student.config.json" <<CFG
   "branch": "dev",
   "room": "r1",
   "seat": "komp1",
-  "auto_login": { "student_id": "s01" }
+  "auto_login": { "nama": "Andi" }
 }
 CFG
 DISPLAY="$DISP" ./node_modules/.bin/electron --no-sandbox --disable-gpu apps/theater \

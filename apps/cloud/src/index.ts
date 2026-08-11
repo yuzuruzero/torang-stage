@@ -376,8 +376,11 @@ app.get("/api/login/options", async (req, reply) => {
 
 const LoginBody = z.object({
   room_key: z.string(),
-  student_id: z.string().min(1),
   seat_id: z.string().min(1),
+  /** Jalur utama: murid MENGETIK nama sendiri (keputusan #14). */
+  nama: z.string().min(1).optional(),
+  /** Jalur daftar cohort (slot e-learning kelak). */
+  student_id: z.string().min(1).optional(),
 });
 
 app.post("/api/login", async (req, reply) => {
@@ -388,10 +391,29 @@ app.post("/api/login", async (req, reply) => {
   if (!keyOk(body.data.room_key)) {
     return reply.code(401).send({ ok: false, error: "room_key salah" });
   }
-  const res = roster.login(body.data.student_id, body.data.seat_id);
+  const res = body.data.nama
+    ? roster.loginByName(body.data.nama, body.data.seat_id)
+    : body.data.student_id
+      ? roster.login(body.data.student_id, body.data.seat_id)
+      : ({ ok: false, error: "isi nama (atau student_id)" } as const);
   if (!res.ok) return reply.code(409).send({ ok: false, error: res.error });
   logLine({ t: Date.now(), event: "login", binding: res.binding });
-  return { ok: true, binding: res.binding, session };
+  return {
+    ok: true,
+    binding: res.binding,
+    session,
+    ...("note" in res && res.note ? { note: res.note } : {}),
+  };
+});
+
+app.post("/api/roster/reset", async (req, reply) => {
+  const body = z.object({ room_key: z.string() }).safeParse(req.body);
+  if (!body.success || !keyOk(body.data.room_key)) {
+    return reply.code(401).send({ ok: false, error: "room_key salah" });
+  }
+  const n = roster.resetAll();
+  logLine({ t: Date.now(), event: "roster_reset", removed: n });
+  return { ok: true, removed: n };
 });
 
 app.post("/api/unbind", async (req, reply) => {

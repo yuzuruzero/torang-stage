@@ -69,7 +69,7 @@ export class StudentController {
     if (this.cfg.auto_login && this.cfg.seat) {
       // Dev/smoke: login tanpa klik begitu renderer siap.
       this.loginWin.webContents.once("did-finish-load", () => {
-        void this.doLogin(this.cfg.auto_login!.student_id, this.cfg.seat!);
+        void this.doLogin(this.cfg.auto_login!, this.cfg.seat!);
       });
     }
   }
@@ -87,7 +87,7 @@ export class StudentController {
   }
 
   private async doLogin(
-    studentId: string,
+    cred: { nama?: string; student_id?: string },
     seatId: string
   ): Promise<{ ok: boolean; error?: string; nama?: string; seat?: string }> {
     try {
@@ -96,7 +96,7 @@ export class StudentController {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           room_key: this.cfg.room_key,
-          student_id: studentId,
+          ...cred,
           seat_id: seatId,
         }),
       });
@@ -156,8 +156,10 @@ export class StudentController {
         return { ok: false, error: `cloud tidak terjangkau: ${(err as Error).message}` };
       }
     });
-    ipcMain.handle("student:login", (_e, p: { student_id: string; seat_id: string }) =>
-      this.doLogin(p.student_id, p.seat_id)
+    ipcMain.handle(
+      "student:login",
+      (_e, p: { nama?: string; student_id?: string; seat_id: string }) =>
+        this.doLogin({ nama: p.nama, student_id: p.student_id }, p.seat_id)
     );
     ipcMain.handle("student:boot", () => ({
       seat: this.cfg.seat,

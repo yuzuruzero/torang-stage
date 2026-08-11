@@ -16,6 +16,8 @@
   .murid-baris { display:inline-block; background:#141a36; border:1px solid var(--line); border-radius:8px; padding:4px 10px; margin:0 6px 6px 0; font-size:13px; color:var(--txt); }
   .murid-baris .on { color:#43d17c; }
   .murid-baris .off { color:#7580b3; }
+  .murid-baris .lepas { color:#ff8d7d; cursor:pointer; margin-left:4px; font-size:11px; }
+  .murid-baris .lepas:hover { color:#ff5540; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:99px; margin-right:6px; }
   .dot.online { background:#43d17c; } .dot.offline { background:#d14343; }
   .muted { color:#7580b3; font-size:12px; }
@@ -61,6 +63,9 @@
   <div class="card">
     <h2>Murid online & binding kursi</h2>
     <div id="daftarMurid" class="muted">memuat…</div>
+    <div style="margin-top:8px">
+      <button class="stop" onclick="resetMurid()" style="padding:6px 10px; font-size:12px">⟲ Reset semua murid (kelas baru)</button>
+    </div>
   </div>
 
   <audio id="pa" preload="auto"></audio>

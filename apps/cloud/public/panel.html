@@ -84,6 +84,9 @@
         <tbody></tbody>
       </table>
       <div id="muridkosong" class="warn" style="display:none">Belum ada yang login.</div>
+      <div style="margin-top:8px">
+        <button class="stop" style="padding:4px 10px; font-size:12px" onclick="resetMurid()">⟲ Reset semua murid (kelas baru)</button>
+      </div>
     </div>
   </div>
 
@@ -144,6 +147,22 @@ async function lepasKursi(seat) {
   segarkan();
 }
 
+async function resetMurid() {
+  if (!confirm("Reset SEMUA murid? Semua binding kursi dilepas untuk kelas baru.")) return;
+  await fetch("/api/roster/reset", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ room_key: key() }),
+  });
+  segarkan();
+}
+
+// nama = ketikan bebas murid → escape sebelum masuk innerHTML
+function esc(s) {
+  return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
 // isi pilihan kursi sekali
 (function () {
   const sel = document.getElementById("kursiSapa");
@@ -194,7 +213,7 @@ async function segarkan() {
 
   $("#murid tbody").innerHTML = (s.bindings ?? [])
     .map(
-      (b) => `<tr><td>${b.seat_id}</td><td>${b.nama}</td>
+      (b) => `<tr><td>${b.seat_id}</td><td>${esc(b.nama)}</td>
         <td><button onclick="lepasKursi('${b.seat_id}')" style="padding:2px 8px;font-size:11px">lepas</button></td></tr>`
     )
     .join("");

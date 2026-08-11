@@ -23,8 +23,9 @@ export interface TheaterConfig {
   hotkeys: boolean;
   /** Mode student: kursi preset dari config mesin (murid tinggal pilih nama). */
   seat: string | null;
-  /** Mode student: login otomatis tanpa klik (dev/smoke test) — student_id dari cohort. */
-  auto_login: { student_id: string } | null;
+  /** Mode student: login otomatis tanpa klik (dev/smoke test) — nama ketik
+   *  ATAU student_id dari cohort. */
+  auto_login: { nama?: string; student_id?: string } | null;
 }
 
 export function loadTheaterConfig(appRoot: string): TheaterConfig {
