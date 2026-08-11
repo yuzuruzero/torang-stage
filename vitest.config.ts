@@ -11,6 +11,7 @@ export default defineConfig({
     include: [
       "packages/*/test/**/*.test.ts",
       "apps/*/test/**/*.test.ts",
+      "tools/**/*.test.ts",
     ],
     environment: "node",
     testTimeout: 15000,

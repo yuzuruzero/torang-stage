@@ -26,7 +26,13 @@ teacher+student):
   "jendela sopan" (greet bernama & ketukan — **murid yang mengklik** untuk
   fullscreen, tidak pernah merebut fokus) · GLOW pinggir layar (pulse/breathe/
   wave, click-through) · intent baru `SAPA` & `GLOW` · STOP membersihkan semua.
-- ⬜ Voice (Whisper + parser + jalur OpenClaw) — terakhir fase 1.
+- ✅ **Jembatan OpenClaw (v0.3.0, jalur TEKS)**: skill `panggung-torang` di
+  OpenClaw guru → parser grammar §5 deterministik (`tools/openclaw/`) →
+  `/api/intent`. Ketik "Torang, puter video tes di TV satu" ke agent guru →
+  panggung menjawab. Pasang: `bash tools/openclaw/pasang-jembatan-openclaw.sh`
+  dari WSL (deteksi alamat cloud otomatis). Mic PTT + Whisper = langkah
+  berikutnya, menggantikan keyboard di jalur yang sama.
+- ⬜ Voice penuh (mic PTT + Whisper + toast konfirmasi) — sisa fase 1.
 - ⬜ Deploy `stage.torang.ai` di torang-sg-1 (Docker+Caddy) — setelah stabil lokal.
 
 > Cek manual di Windows asli (tidak bisa diverifikasi di sandbox headless):

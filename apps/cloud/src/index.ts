@@ -318,6 +318,19 @@ app.get("/api/state", async () => ({
     })),
 }));
 
+/** Kosakata parser (§5-§6: manifest = sumber kosakata). GET terbuka seperti
+ *  /api/state — dipakai jembatan OpenClaw & panel untuk validasi lokal. */
+app.get("/api/vocab", async () => ({
+  ok: true,
+  actions: ["puter", "pindah", "lanjut", "ulang", "stop", "sapa", "glow"],
+  aliases: manifest.modules.map((m) => ({ alias: m.alias, module_id: m.id })),
+  targets: {
+    tv: ["tv1", "tv2", "tv3", "tv4"],
+    komp: Array.from({ length: 20 }, (_, i) => `komp${i + 1}`),
+    groups: ["all_tv", "all_student"],
+  },
+}));
+
 const IntentBody = z.object({ room_key: z.string(), intent: IntentSchema });
 
 app.post("/api/intent", async (req, reply) => {

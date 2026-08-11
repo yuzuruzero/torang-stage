@@ -93,3 +93,19 @@ torang-sg-1 mekanis. Field `client_id` sudah ada (diisi fase 2 file-watcher).
   artefak compositing). Fallback yang sudah dirancang bila bermasalah:
   4 window bar tepi (menghitam pun hanya menutup 14 px pinggir).
 - Multi-instance satu mesin dev: `userData` dipisah per peran/kursi.
+
+## D16 · (v0.3.0) Jembatan OpenClaw = TEKS dulu, parser deterministik di skrip
+Alur voice §2.1 dicicil dari belakang: skill OpenClaw guru meneruskan kalimat
+APA ADANYA ke `torang-cue.mjs`; parser grammar §5 (kosakata tertutup, angka
+kata satu–dua puluh) yang menentukan intent — LLM tidak pernah memutuskan
+aksi; kalimat asing DITOLAK dengan pesan jelas. Kosakata alias dari
+`GET /api/vocab` (manifest = sumber kosakata §6), cloud tetap memvalidasi
+ulang. Konfirmasi-toast 1 dtk (§5) DITUNDA ke tahap PTT/Whisper — ketikan
+sudah tindakan sadar, mic yang rawan salah dengar. "glow" ditambahkan sebagai
+aksi EKSTENSI di luar 8 kata resmi (praktis untuk uji; tim kurikulum boleh
+mencoret). "buka" (scene/pixel office) ditolak jujur: fase 2.
+
+## D17 · (v0.2.6) JANGAN globalShortcut `Ctrl+Alt+HURUF` di Windows
+Setara AltGr+huruf → mengganggu pengetikan aplikasi lain selama app hidup
+(insiden Claude desktop 11 Agu, terkonfirmasi hilang setelah pindah).
+Hotkey = tombol F: `Ctrl+Alt+F9/F10/F11`; `hotkeys:false` mematikan total.

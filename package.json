@@ -1,6 +1,6 @@
 {
   "name": "torang-stage",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "private": true,
   "description": "Panggung Torang (Theater of AI) — cloud control plane + app Electron teacher/student",
   "engines": {
