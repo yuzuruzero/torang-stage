@@ -83,7 +83,10 @@ $cfg = @{
   seat      = $Kursi
   auto_login = $null
 } | ConvertTo-Json
-Set-Content -Path (Join-Path $Tujuan "apps\theater\torang-theater.config.json") -Value $cfg -Encoding UTF8
+# WriteAllText = UTF-8 TANPA BOM. (Set-Content -Encoding UTF8 di PowerShell 5.1
+# menambah BOM -> JSON.parse Node gagal -> app salah mode. Insiden 11 Agu.)
+$cfgPath = Join-Path $Tujuan "apps\theater\torang-theater.config.json"
+[System.IO.File]::WriteAllText($cfgPath, $cfg)
 Write-Host "Config ditulis: kursi=$Kursi cloud=$Cloud"
 
 # --- 6. Shortcut Desktop -----------------------------------------------------

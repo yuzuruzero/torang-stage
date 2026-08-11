@@ -45,12 +45,26 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
     process.env.TORANG_THEATER_CONFIG ??
     path.join(appRoot, "torang-theater.config.json");
   if (fs.existsSync(file)) {
+    let parsed: Partial<TheaterConfig>;
     try {
-      const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
-      return { ...defaults, ...parsed };
+      // PowerShell 5.1 menulis UTF-8 BER-BOM — buang dulu, JSON.parse tersedak BOM.
+      const raw = fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "");
+      parsed = JSON.parse(raw) as Partial<TheaterConfig>;
     } catch (err) {
-      console.error(`[theater] config rusak (${file}):`, err);
+      // JANGAN diam-diam jatuh ke default (insiden PC murid berubah jadi
+      // panggung, 11 Agu) — gagal harus JELAS.
+      throw new Error(
+        `Config tidak bisa dibaca: ${file}\n${(err as Error).message}\n` +
+          `Perbaiki isi file itu (JSON valid, tanpa BOM) atau hapus, lalu jalankan lagi.`
+      );
     }
+    const cfg = { ...defaults, ...parsed };
+    if (cfg.mode !== "teacher" && cfg.mode !== "student") {
+      throw new Error(
+        `Config ${file}: mode tidak dikenal "${String(cfg.mode)}" (harus "teacher" atau "student").`
+      );
+    }
+    return cfg;
   }
   return defaults;
 }

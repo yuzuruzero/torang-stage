@@ -8,7 +8,7 @@
  *   manifest). Tidak ada jalur menjalankan perintah OS dari cue.
  * - Kill switch: STOP (hotkey/panel/cloud) selalu mengembalikan semua ke idle.
  */
-import { app, globalShortcut, ipcMain } from "electron";
+import { app, dialog, globalShortcut, ipcMain } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { CueSchema, expandTargets, TV_TARGETS, type Cue } from "@torang/shared";
@@ -28,7 +28,17 @@ const VERSION: string = (() => {
   }
 })();
 
-const cfg: TheaterConfig = loadTheaterConfig(APP_ROOT);
+const cfg: TheaterConfig = (() => {
+  try {
+    return loadTheaterConfig(APP_ROOT);
+  } catch (err) {
+    const pesan = (err as Error).message;
+    console.error(`[theater] ${pesan}`);
+    dialog.showErrorBox("Torang — config bermasalah", pesan);
+    app.exit(1);
+    process.exit(1); // jangan pernah lanjut dengan mode tebakan
+  }
+})();
 
 // Multi-instance di satu mesin dev (teacher + beberapa student):
 // pisahkan userData per peran/kursi supaya cache Chromium tidak saling kunci.
