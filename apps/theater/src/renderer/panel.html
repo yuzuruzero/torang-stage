@@ -38,9 +38,9 @@
 
   <div class="card">
     <h2>Kendali (jalur cue penuh lewat cloud — sama dengan voice nanti)</h2>
-    <button onclick="intent({intent:'GO'})">▶ GO <span class="muted">Ctrl+Alt+G</span></button>
-    <button onclick="intent({intent:'REPLAY'})">↻ Ulang <span class="muted">Ctrl+Alt+R</span></button>
-    <button class="stop" onclick="intent({intent:'STOP'})">■ STOP <span class="muted">Ctrl+Alt+S</span></button>
+    <button onclick="intent({intent:'GO'})">▶ GO <span class="muted" id="hkGo"></span></button>
+    <button onclick="intent({intent:'REPLAY'})">↻ Ulang <span class="muted" id="hkUlang"></span></button>
+    <button class="stop" onclick="intent({intent:'STOP'})">■ STOP <span class="muted" id="hkStop"></span></button>
     <div style="margin-top:6px">
       <button onclick="intent({intent:'PLAY_MODULE', alias:'tes', target:'tv1'})">Puter “tes” di TV1</button>
       <button onclick="intent({intent:'MOVE', to:'tv2'})">Pindah TV2</button>

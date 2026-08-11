@@ -186,6 +186,9 @@ ipcMain.handle("boot", (event) => {
     version: VERSION,
     isPanel,
     status: statusCache,
+    hotkeys: cfg.hotkeys
+      ? { go: "Ctrl+Alt+F9", stop: "Ctrl+Alt+F10", replay: "Ctrl+Alt+F11" }
+      : null,
   };
 });
 
@@ -256,9 +259,15 @@ app.whenReady().then(() => {
   client.start();
 
   // Hotkey global — backup senyap guru (dibangun SEBELUM voice, master #4/§14).
-  globalShortcut.register("CommandOrControl+Alt+G", () => void sendIntent({ intent: "GO" }));
-  globalShortcut.register("CommandOrControl+Alt+S", () => void sendIntent({ intent: "STOP" }));
-  globalShortcut.register("CommandOrControl+Alt+R", () => void sendIntent({ intent: "REPLAY" }));
+  // Pakai tombol F, BUKAN Ctrl+Alt+huruf: di Windows Ctrl+Alt+huruf = AltGr+
+  // huruf → pendaftarannya mengganggu pengetikan di app lain (insiden 11 Agu).
+  if (cfg.hotkeys) {
+    globalShortcut.register("CommandOrControl+Alt+F9", () => void sendIntent({ intent: "GO" }));
+    globalShortcut.register("CommandOrControl+Alt+F10", () => void sendIntent({ intent: "STOP" }));
+    globalShortcut.register("CommandOrControl+Alt+F11", () => void sendIntent({ intent: "REPLAY" }));
+  } else {
+    console.log("[theater] hotkey global DIMATIKAN lewat config (hotkeys: false)");
+  }
 
   // Umpan state live ke panel operator (murid online, binding, show-state).
   // Fetch di MAIN (bukan renderer) — renderer file:// kena CORS.

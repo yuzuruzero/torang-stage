@@ -27,6 +27,10 @@ void window.torang.boot().then((b) => {
   $("#ver").textContent = b.version;
   $("#panelurl").textContent = `${b.cloud_api}/panel`;
   if (b.status) applyStatus(b.status);
+  const hk = b.hotkeys;
+  $("#hkGo").textContent = hk ? hk.go : "(hotkey off)";
+  $("#hkUlang").textContent = hk ? hk.replay : "";
+  $("#hkStop").textContent = hk ? hk.stop : "";
 });
 
 window.torang.onAudio((a) => {

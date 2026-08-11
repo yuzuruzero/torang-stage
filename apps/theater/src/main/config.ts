@@ -17,6 +17,10 @@ export interface TheaterConfig {
   kiosk: boolean;
   /** Dev: jumlah window TV yang dibuka (1–4). Kecilkan di PC lemah. */
   dev_tv_count: number;
+  /** Hotkey global GO/STOP/ULANG. false = matikan total (dev di PC kerja).
+   *  PENTING: jangan pakai Ctrl+Alt+HURUF — di Windows itu = AltGr+huruf dan
+   *  mengganggu pengetikan di app lain (insiden Claude desktop, 11 Agu). */
+  hotkeys: boolean;
   /** Mode student: kursi preset dari config mesin (murid tinggal pilih nama). */
   seat: string | null;
   /** Mode student: login otomatis tanpa klik (dev/smoke test) — student_id dari cohort. */
@@ -36,6 +40,7 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
     dev_layout: true,
     kiosk: false,
     dev_tv_count: 4,
+    hotkeys: true,
     seat: null,
     auto_login: null,
   };

@@ -32,6 +32,7 @@ type BootInfo = {
   version: string;
   isPanel: boolean;
   status?: PanelStatus;
+  hotkeys?: { go: string; stop: string; replay: string } | null;
 };
 
 interface TorangBridge {
