@@ -1,3 +1,9 @@
+# CATATAN: file ini SENGAJA ditaruh di tools/, BUKAN .github/workflows/.
+# Push file di .github/workflows/* butuh kredensial ber-scope `workflow` —
+# kredensial tersimpan Hadi tidak punya itu (dan tidak wajib).
+# Cara mengaktifkan CI (sekali, lewat browser, tanpa token):
+#   github.com/yuzuruzero/torang-stage → tab Actions → "set up a workflow
+#   yourself" → tempel isi file ini → Commit changes (via web UI).
 name: test
 on:
   push:

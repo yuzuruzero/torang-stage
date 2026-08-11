@@ -69,11 +69,12 @@ if git push -u origin main; then
   echo "   Installer murid akan mengunduh dari: ${URL%.git}/archive/refs/heads/main.zip"
 else
   echo
-  echo "❌ Push gagal. Kemungkinan besar autentikasi:"
-  echo "   - username : yuzuruzero"
-  echo "   - password : Personal Access Token (BUKAN password akun)"
-  echo "     buat di https://github.com/settings/tokens → Generate new token (classic),"
-  echo "     centang scope 'repo', lalu tempel sebagai password saat git bertanya."
-  echo "   - pastikan repo-nya sudah dibuat di https://github.com/new (nama: torang-stage)"
+  echo "❌ Push gagal."
+  echo "   • Kalau errornya menyebut \"workflow ... without 'workflow' scope\":"
+  echo "     ada file di .github/workflows/ yang ikut commit — pindahkan keluar"
+  echo "     (CI diaktifkan lewat web GitHub, lihat tools/ci-test.yml)."
+  echo "   • Kalau soal autentikasi: username yuzuruzero, password = token akses"
+  echo "     (github.com/settings/tokens, scope 'repo') ATAU sekali setup SSH key."
+  echo "   • Pastikan repo sudah ada: https://github.com/new (nama: torang-stage)"
   exit 1
 fi

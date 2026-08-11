@@ -22,10 +22,15 @@ satu installer yang mengunduh repo sebagai ZIP (**tanpa git di PC murid**).
    bash tools/push-ke-github.sh            # ketik "ya" untuk push
    ```
 
-   Kalau git minta login: username `yuzuruzero`, password = **Personal Access
-   Token** (github.com/settings/tokens, scope `repo`).
+   Biasanya TIDAK ditanya password (kredensial tersimpan dari push repo
+   sebelumnya). Kalau ditanya: username `yuzuruzero`, password = token akses
+   (github.com/settings/tokens, scope `repo`).
 3. Update berikutnya: commit dulu (atau minta Claude siapkan), lalu jalankan
    skrip yang sama lagi.
+4. (Opsional) Aktifkan CI: tab **Actions** di repo → "set up a workflow
+   yourself" → tempel isi `tools/ci-test.yml` → Commit via web. Jangan push
+   file `.github/workflows/*` lewat git — kredensial tersimpan tidak punya
+   scope `workflow`, push bakal ditolak.
 
 ## B. Tiap kelas — siapkan PC GURU
 

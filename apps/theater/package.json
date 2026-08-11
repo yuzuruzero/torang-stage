@@ -1,6 +1,6 @@
 {
   "name": "@torang/theater",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "App endpoint Panggung Torang — Electron satu codebase, mode teacher & student",
   "main": "dist/main.cjs",
