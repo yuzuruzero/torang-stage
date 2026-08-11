@@ -34,6 +34,13 @@ teacher+student):
 > Kalau di mesinmu layar menghitam saat glow, laporkan — fallback 4 bar tepi
 > sudah dirancang.
 
+## Naik ke GitHub & instal di PC murid
+
+Lihat **[PANDUAN-PASANG-MURID.md](PANDUAN-PASANG-MURID.md)**: sekali push oleh
+Hadi (`bash tools/push-ke-github.sh` dari WSL), lalu tiap PC murid dipasang
+dengan `tools/PASANG-MURID.bat` (unduh zip repo — tanpa git di PC murid).
+PC guru untuk uji LAN: `jalankan-cloud-lan.bat`.
+
 ## Cara menjalankan (dev, Windows/Linux/mac)
 
 Prasyarat: **Node.js ≥ 20** (`node -v`) + internet untuk `npm install` pertama.

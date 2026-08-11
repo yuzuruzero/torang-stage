@@ -19,3 +19,7 @@ desktop.ini
 # config lokal per mesin (contoh di-commit, config asli tidak)
 torang-theater.config.json
 !torang-theater.config.example.json
+
+# artefak pengiriman/lokal di folder kerja Hadi
+/*.zip
+_to_delete/

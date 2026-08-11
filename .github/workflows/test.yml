@@ -1,0 +1,23 @@
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # vitest tidak butuh binari Electron (e2e-nya murni Node) — hemat waktu CI
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -p packages/shared/tsconfig.json
+      - run: npx tsc -p apps/cloud/tsconfig.json
+      - run: npx tsc -p apps/theater/tsconfig.json
+      - run: npm test
