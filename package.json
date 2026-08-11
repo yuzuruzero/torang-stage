@@ -1,6 +1,6 @@
 {
   "name": "torang-stage",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "Panggung Torang (Theater of AI) — cloud control plane + app Electron teacher/student",
   "engines": {
@@ -15,6 +15,7 @@
     "dev:app": "npm run dev -w apps/theater",
     "dev:student": "npm run dev:student -w apps/theater",
     "murid": "npm run start -w apps/theater",
+    "guru": "npm run start -w apps/theater",
     "assets": "node tools/make-placeholders.mjs",
     "test": "vitest run",
     "test:watch": "vitest"

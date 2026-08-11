@@ -1,75 +1,71 @@
-# Panduan: GitHub & Pasang di PC Murid
+# Panduan Pasang — PC Guru & PC Murid
 
-Alur: repo naik ke GitHub SEKALI (oleh Hadi) → tiap PC murid dipasang lewat
-satu installer yang mengunduh repo sebagai ZIP (**tanpa git di PC murid**).
+Dua installer, sesuai peran mesin:
 
-> Catatan jujur: ini jalur UJI/DEV (butuh Node + `npm install` per PC).
-> Untuk kelas produksi, target akhirnya installer NSIS tanpa Node
-> (keputusan #10) — menyusul di tahap packaging.
+| Installer | Untuk | Yang tampil |
+|---|---|---|
+| `tools/PASANG-GURU.bat` | PC guru/panggung | Cloud + panel operator + 4 window TV |
+| `tools/PASANG-MURID.bat` | Tiap PC murid | HANYA window murid (login kecil + overlay saat di-cue) |
+
+Keduanya mengunduh repo dari GitHub sebagai ZIP (**tanpa git di PC target**),
+menjalankan `npm install`, menulis config sesuai peran, dan membuat shortcut
+di Desktop. Folder lama tidak pernah dihapus — dipindah jadi `-lama-<tanggal>`.
+
+> Catatan jujur: ini jalur UJI/DEV (butuh Node ≥ 20 + internet per PC).
+> Target kelas produksi = installer NSIS tanpa Node (keputusan #10, tahap
+> packaging menyusul).
 
 ---
 
 ## A. Sekali saja — naikkan repo ke GitHub (di PC Hadi)
 
-1. Buka https://github.com/new → nama repo **`torang-stage`** → **Public**
-   (installer murid mengunduh zip tanpa login) → JANGAN centang "Add a README"
-   → Create repository.
-2. Dari WSL:
-
-   ```bash
-   cd /mnt/d/projects/torang-stage
-   bash tools/push-ke-github.sh --kering   # lihat dulu apa yang akan terjadi
-   bash tools/push-ke-github.sh            # ketik "ya" untuk push
-   ```
-
-   Biasanya TIDAK ditanya password (kredensial tersimpan dari push repo
-   sebelumnya). Kalau ditanya: username `yuzuruzero`, password = token akses
-   (github.com/settings/tokens, scope `repo`).
-3. Update berikutnya: commit dulu (atau minta Claude siapkan), lalu jalankan
-   skrip yang sama lagi.
-4. (Opsional) Aktifkan CI: tab **Actions** di repo → "set up a workflow
-   yourself" → tempel isi `tools/ci-test.yml` → Commit via web. Jangan push
-   file `.github/workflows/*` lewat git — kredensial tersimpan tidak punya
-   scope `workflow`, push bakal ditolak.
-
-## B. Tiap kelas — siapkan PC GURU
-
-1. Jalankan cloud yang terbuka ke LAN: double-click **`jalankan-cloud-lan.bat`**
-   (atau `jalankan-cloud-lan.bat kunciBatch` untuk kunci ruangan sendiri).
-   Saat Windows Firewall bertanya → **Allow** untuk jaringan **Private**.
-2. Catat IP PC guru: `ipconfig` → mis. `192.168.8.10`. (Di venue: IP host
-   statik dari router Torang — sudah jadi SOP jaringan kelas.)
-3. Jalankan app teacher seperti biasa: `npm run dev:app`.
-
-## C. Tiap PC murid — pasang (implementor)
-
-Bawa 2 file dari folder `tools/` di flashdisk: **`PASANG-MURID.bat`** +
-**`pasang-murid.ps1`** (ambil dari checkout Windows, bukan copy-paste web).
-
-1. Double-click `PASANG-MURID.bat`.
-2. Jawab tiga pertanyaan: **kursi** (mis. `komp3`), **alamat cloud**
-   (mis. `http://192.168.8.10:8787`), **kunci ruangan** (samakan dengan guru).
-3. Installer akan: cek Node ≥ 20 (kalau belum ada, halaman unduh terbuka) →
-   unduh repo ZIP dari GitHub → `npm install` → tulis config kursi →
-   buat **"Torang Kelas.bat"** di Desktop.
-4. Jalankan "Torang Kelas.bat" → murid pilih nama → di panel guru kursi itu
-   tampil online + terikat nama.
-
-Alternatif satu baris (PowerShell, tanpa flashdisk):
-
-```powershell
-irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-murid.ps1 -OutFile "$env:TEMP\pm.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\pm.ps1"
+```bash
+cd /mnt/d/projects/torang-stage
+bash tools/push-ke-github.sh          # ketik "ya"; --kering untuk lihat dulu
 ```
 
-Pasang ulang / update versi: jalankan installer lagi — folder lama TIDAK
-dihapus, dipindah jadi `torang-stage-lama-<tanggal>`.
+Biasanya TIDAK ditanya password (kredensial tersimpan). **Jangan pernah
+menaruh file di `.github/workflows/`** — push akan ditolak (kredensial tanpa
+scope `workflow`); CI diaktifkan lewat web UI memakai isi `tools/ci-test.yml`.
+
+## B. PC GURU — `PASANG-GURU.bat`
+
+1. Bawa `tools/PASANG-GURU.bat` + `tools/pasang-guru.ps1` (flashdisk, dari
+   checkout Windows) → double-click bat-nya.
+2. Isi **kunci ruangan** (tanpa spasi) — kunci ini juga yang dipakai semua
+   PC murid.
+3. Installer: cek Node → unduh repo → `npm install` → tulis config `teacher`
+   → coba daftarkan firewall port 8787 (kalau bukan admin: cukup klik ALLOW
+   saat pertama jalan) → buat **"Torang Panggung.bat"** di Desktop
+   (menyalakan cloud terbuka-LAN + app panggung sekaligus) → **menampilkan
+   IP LAN + kunci yang harus diisikan ke installer murid**.
+4. Jalankan "Torang Panggung.bat": terminal cloud terbuka + panel operator +
+   4 window TV muncul.
+
+## C. Tiap PC MURID — `PASANG-MURID.bat`
+
+1. Bawa `tools/PASANG-MURID.bat` + `tools/pasang-murid.ps1` → double-click.
+   (Alternatif tanpa flashdisk: PowerShell →
+   `irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-murid.ps1 -OutFile "$env:TEMP\pm.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\pm.ps1"`)
+2. Isi tiga hal: **kursi** (mis. `komp3`, satu kursi satu PC), **alamat
+   cloud** dan **kunci ruangan** — keduanya persis seperti yang ditampilkan
+   installer guru di langkah B.3.
+3. Hasil: **"Torang Kelas.bat"** di Desktop. Dijalankan → hanya window kecil
+   "Selamat datang di kelas Torang"; murid pilih nama; di panel guru kursi
+   itu online + terikat nama. TIDAK ADA panel/TV panggung di PC murid —
+   kalau config rusak, app berhenti dengan pesan error, tidak pernah
+   menebak mode (pelindung insiden 11 Agu).
 
 ## D. Kalau ada masalah
 
 - **Node belum ada** → installer membuka nodejs.org; pasang LTS, ulangi.
-- **Unduhan gagal / PC tanpa internet** → cek internet PC murid dulu. Untuk
-  skenario full-offline (zip + node_modules dari flashdisk) belum ada jalurnya —
-  bilang ke Claude, dibuatkan varian installer offline.
-- **Kursi online tapi sapa/glow tidak sampai** → kunci ruangan beda dengan
-  cloud, atau firewall PC guru memblok port 8787 (cek langkah B).
+- **Kursi tidak muncul online di panel guru** → (1) beda jaringan Wi-Fi/LAN,
+  (2) firewall PC guru belum allow 8787, (3) kunci ruangan tidak sama,
+  (4) router memblok antar-perangkat (client isolation) — pakai router
+  sendiri/kabel.
 - **Layar murid menghitam saat glow** → laporkan; fallback bar tepi disiapkan.
+- **PC murid pernah salah tampil panggung** (instal ≤ v0.2.2) → pasang ulang
+  dengan installer terbaru, atau buka `apps\theater\torang-theater.config.json`
+  di Notepad → Save As → Encoding **UTF-8** (tanpa BOM).
+- **Unduhan gagal / PC tanpa internet** → belum ada jalur full-offline;
+  bilang ke Claude, dibuatkan varian installer offline.
