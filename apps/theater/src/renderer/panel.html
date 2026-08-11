@@ -12,6 +12,10 @@
   button { background:#2b3a7e; color:#fff; border:1px solid #40509e; border-radius:8px; padding:10px 14px; margin:0 6px 6px 0; cursor:pointer; font-size:14px; }
   button:hover { background:#37489c; }
   button.stop { background:#7e2b2b; border-color:#9e4040; }
+  select { background:#141a36; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:13px; margin:0 6px 6px 0; }
+  .murid-baris { display:inline-block; background:#141a36; border:1px solid var(--line); border-radius:8px; padding:4px 10px; margin:0 6px 6px 0; font-size:13px; color:var(--txt); }
+  .murid-baris .on { color:#43d17c; }
+  .murid-baris .off { color:#7580b3; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:99px; margin-right:6px; }
   .dot.online { background:#43d17c; } .dot.offline { background:#d14343; }
   .muted { color:#7580b3; font-size:12px; }
@@ -45,11 +49,18 @@
       <button onclick="intent({intent:'MOVE', to:'tv1'})">Pindah TV1</button>
     </div>
     <div style="margin-top:6px">
-      <button onclick="intent({intent:'SAPA', target:'komp1'})">👋 Sapa komp1</button>
+      <select id="kursi" title="pilih kursi murid (● = online)"></select>
+      <button onclick="sapaKursi()">👋 Sapa</button>
+      <button onclick="ketukKursi()">🚪 Ketuk (materi)</button>
+      <button onclick="glowKursi()">✨ Glow</button>
       <button onclick="intent({intent:'GLOW', target:'all_student', preset:'pulse', duration_ms:4000})">✨ Glow semua</button>
-      <button onclick="intent({intent:'PLAY_MODULE', alias:'tes', target:'komp1'})">🚪 Ketuk komp1 (materi)</button>
     </div>
     <div class="muted">Rundown lengkap + status ACK: buka <code id="panelurl">—</code> di browser.</div>
+  </div>
+
+  <div class="card">
+    <h2>Murid online & binding kursi</h2>
+    <div id="daftarMurid" class="muted">memuat…</div>
   </div>
 
   <audio id="pa" preload="auto"></audio>

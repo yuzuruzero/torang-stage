@@ -11,7 +11,7 @@
 import { app, dialog, globalShortcut, ipcMain } from "electron";
 import fs from "node:fs";
 import path from "node:path";
-import { CueSchema, expandTargets, TV_TARGETS, type Cue } from "@torang/shared";
+import { CueSchema, expandTargets, type Cue } from "@torang/shared";
 import { loadTheaterConfig, type TheaterConfig } from "./config.js";
 import { createTeacherWindows, type TeacherWindows } from "./windows.js";
 import { CloudClient } from "./ws-client.js";
@@ -55,6 +55,7 @@ app.setPath(
 // ---------------------------------------------------------------------------
 let wins: TeacherWindows | null = null;
 let client: CloudClient | null = null;
+let stateTimer: NodeJS.Timeout | null = null;
 
 interface PendingCue {
   expect: Set<string>; // tv yang belum lapor 'played'
@@ -244,7 +245,9 @@ app.whenReady().then(() => {
       room: cfg.room,
       room_key: cfg.room_key,
       version: VERSION,
-      targets: [...TV_TARGETS, "teacher"],
+      // Hanya klaim TV yang window-nya benar-benar dibuka (dev_tv_count) —
+      // cue ke TV tanpa window akan jelas "tidak ada endpoint" di panel.
+      targets: [...wins!.tvs.keys(), "teacher"],
     },
     onCue: (msg) => handleCueMessage(msg.cue),
     onStatus: (status, detail) => panelStatus({ cloud: status, ...(detail ? { note: detail } : {}) }),
@@ -257,6 +260,18 @@ app.whenReady().then(() => {
   globalShortcut.register("CommandOrControl+Alt+S", () => void sendIntent({ intent: "STOP" }));
   globalShortcut.register("CommandOrControl+Alt+R", () => void sendIntent({ intent: "REPLAY" }));
 
+  // Umpan state live ke panel operator (murid online, binding, show-state).
+  // Fetch di MAIN (bukan renderer) — renderer file:// kena CORS.
+  stateTimer = setInterval(async () => {
+    if (!wins || wins.panel.isDestroyed()) return;
+    try {
+      const res = await fetch(`${cfg.cloud_api}/api/state`);
+      if (res.ok) wins.panel.webContents.send("panel:state", await res.json());
+    } catch {
+      /* offline sudah ditandai lewat status WS */
+    }
+  }, 1500);
+
   console.log(
     `[theater] mode=${cfg.mode} endpoint=${cfg.endpoint_id} cloud=${cfg.cloud_api} aset=${cfg.assets_dir}`
   );
@@ -264,6 +279,7 @@ app.whenReady().then(() => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  if (stateTimer) clearInterval(stateTimer);
   client?.stop();
   studentCtl?.stop();
 });

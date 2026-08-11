@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("torang", {
     ipcRenderer.on("panel:audio", (_e, data) => cb(data)),
   onStatus: (cb: (data: unknown) => void) =>
     ipcRenderer.on("panel:status", (_e, data) => cb(data)),
+  onState: (cb: (data: unknown) => void) =>
+    ipcRenderer.on("panel:state", (_e, data) => cb(data)),
   sendEvent: (payload: unknown) => ipcRenderer.send("tv:event", payload),
   sendIntent: (intent: unknown) => ipcRenderer.send("panel:intent", intent),
 

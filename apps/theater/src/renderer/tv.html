@@ -16,11 +16,13 @@
   }
   #idle .logo {
     font-size:9vw; font-weight:800; letter-spacing:.12em;
-    animation: nafas 3.2s ease-in-out infinite;
+    animation: nafas 6s ease-in-out infinite;
     text-shadow:0 0 30px #3350cc88;
+    will-change: opacity;
   }
   #idle .label { color:#5a6699; font-size:2.5vw; letter-spacing:.3em; }
-  @keyframes nafas { 0%,100% { opacity:.75; transform:scale(1); } 50% { opacity:1; transform:scale(1.03); } }
+  /* opacity-only + siklus panjang = repaint murah (PC dev 2-core Hadi) */
+  @keyframes nafas { 0%,100% { opacity:.7; } 50% { opacity:1; } }
 
   #video {
     position:absolute; inset:0; width:100%; height:100%;

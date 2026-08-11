@@ -38,7 +38,12 @@ export function createTeacherWindows(
   const displays = screen.getAllDisplays();
   const useKiosk = cfg.kiosk && !cfg.dev_layout && displays.length >= 5;
 
-  TV_TARGETS.forEach((tv, i) => {
+  // Dev di PC lemah: batasi jumlah window TV (kiosk selalu 4).
+  const jumlahTv = useKiosk
+    ? TV_TARGETS.length
+    : Math.min(TV_TARGETS.length, Math.max(1, cfg.dev_tv_count || 4));
+
+  TV_TARGETS.slice(0, jumlahTv).forEach((tv, i) => {
     let win: BrowserWindow;
     if (useKiosk) {
       // Display 0 = panel operator; TV1..TV4 → display 1..4.

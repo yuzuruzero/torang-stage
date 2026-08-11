@@ -40,6 +40,7 @@ interface TorangBridge {
   onStop: (cb: () => void) => void;
   onAudio: (cb: (a: AudioMsg) => void) => void;
   onStatus: (cb: (s: PanelStatus) => void) => void;
+  onState: (cb: (data: unknown) => void) => void;
   sendEvent: (p: TvEvent) => void;
   sendIntent: (intent: unknown) => void;
 

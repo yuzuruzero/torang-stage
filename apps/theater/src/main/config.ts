@@ -15,6 +15,8 @@ export interface TheaterConfig {
   /** true = 4 window kecil di 1 monitor (dev); false + kiosk = fullscreen per display. */
   dev_layout: boolean;
   kiosk: boolean;
+  /** Dev: jumlah window TV yang dibuka (1–4). Kecilkan di PC lemah. */
+  dev_tv_count: number;
   /** Mode student: kursi preset dari config mesin (murid tinggal pilih nama). */
   seat: string | null;
   /** Mode student: login otomatis tanpa klik (dev/smoke test) — student_id dari cohort. */
@@ -33,6 +35,7 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
     assets_dir: path.join(appRoot, "assets-dev"),
     dev_layout: true,
     kiosk: false,
+    dev_tv_count: 4,
     seat: null,
     auto_login: null,
   };
