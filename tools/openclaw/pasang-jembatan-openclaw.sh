@@ -17,24 +17,50 @@ command -v node >/dev/null || { echo "❌ node tidak ada di WSL ini"; exit 1; }
 
 echo "== 1. Cari alamat cloud dari WSL =="
 KANDIDAT=()
+[ -n "${TORANG_STAGE_API:-}" ] && KANDIDAT+=("$TORANG_STAGE_API")
+
+# a. Gateway WSL→Windows (mode NAT)
 GW=$(ip route show default 2>/dev/null | awk '{print $3; exit}') || true
 [ -n "${GW:-}" ] && KANDIDAT+=("http://$GW:8787")
-# IP LAN Windows (kalau WSL bisa hairpin) — ambil dari resolv/route sering sama dgn GW; tambah manual umum:
+
+# b. IP LAN Windows — tanya PowerShell langsung (WSL bisa memanggil exe Windows)
+LANIP=$(powershell.exe -NoProfile -Command \
+  "(Get-NetIPConfiguration | Where-Object IPv4DefaultGateway | Select-Object -First 1).IPv4Address.IPAddress" \
+  2>/dev/null | tr -d '\r' | tail -1) || true
+[ -n "${LANIP:-}" ] && KANDIDAT+=("http://$LANIP:8787")
+
+# c. Nameserver WSL (di NAT sering = host) + loopback (mode mirrored)
+NS=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null) || true
+[ -n "${NS:-}" ] && KANDIDAT+=("http://$NS:8787")
 KANDIDAT+=("http://127.0.0.1:8787")
 
 API=""
+DICOBA=""
 for k in "${KANDIDAT[@]}"; do
-  if curl -s -m 3 "$k/api/state" | grep -q '"server_now"'; then API="$k"; break; fi
+  case " $DICOBA " in *" $k "*) continue ;; esac
+  DICOBA="$DICOBA $k"
+  printf '   coba %s ... ' "$k"
+  if curl -s -m 3 "$k/api/state" | grep -q '"server_now"'; then
+    echo "TEMBUS ✔"
+    API="$k"
+    break
+  fi
+  echo "gagal"
 done
+
 if [ -z "$API" ]; then
-  echo "❌ Cloud tidak terjangkau dari WSL. Dicoba: ${KANDIDAT[*]}"
-  echo "   Pastikan di Windows: jalankan-cloud-lan.bat hidup."
-  echo "   Kalau firewall memblok jalur WSL, jalankan di PowerShell (admin):"
-  echo "     netsh advfirewall firewall add rule name=\"Torang Stage 8787\" dir=in action=allow protocol=TCP localport=8787"
-  echo "   Atau paksa alamat: TORANG_STAGE_API=http://<ip>:8787 bash $0"
+  echo
+  echo "❌ Cloud tidak terjangkau dari WSL. Dua penyebab paling umum:"
+  echo "   1. Cloud belum hidup → di Windows jalankan: jalankan-cloud-lan.bat"
+  echo "   2. FIREWALL: adapter vEthernet (WSL) dihitung profil PUBLIC oleh"
+  echo "      Windows, jadi Allow yang lama (Private) tidak berlaku."
+  echo "      Fix sekali, di PowerShell **Run as Administrator**:"
+  echo "        netsh advfirewall firewall add rule name=\"Torang Stage 8787\" dir=in action=allow protocol=TCP localport=8787"
+  echo "      (aturan ini berlaku semua profil, termasuk jalur WSL)"
+  echo "   Lalu jalankan skrip ini lagi. Paksa alamat kalau perlu:"
+  echo "     TORANG_STAGE_API=http://<ip>:8787 bash tools/openclaw/pasang-jembatan-openclaw.sh"
   exit 1
 fi
-[ -n "${TORANG_STAGE_API:-}" ] && API="$TORANG_STAGE_API"
 echo "   cloud ditemukan: $API"
 
 echo "== 2. Tulis config =="
