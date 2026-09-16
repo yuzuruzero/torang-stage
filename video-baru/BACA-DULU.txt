@@ -1,0 +1,23 @@
+FOLDER TITIPAN VIDEO BARU
+=========================
+
+Taruh berkas video materi di folder ini, lalu bilang ke agent Hermes:
+
+    "Torang, daftarkan video baru."
+
+Atau jalankan sendiri di PowerShell:
+
+    ..\tools\cli\torang-modul.cmd inbox
+    ..\tools\cli\torang-modul.cmd usul "video kamu.mp4"
+    ..\tools\cli\torang-modul.cmd daftar "video kamu.mp4" --alias=<kata>
+
+Nama berkas bebas - yang penting jelas, karena usulan alias diambil dari
+situ. "video instal hermes.mp4" akan diusulkan beralias "hermes".
+
+Kalau ada audio terpisah, beri nama sama dengan videonya (mis.
+"video instal hermes.m4a") - nanti ikut terdaftar sendiri.
+
+Berkas di folder ini TIDAK ikut diputar sampai didaftarkan. Yang dibaca
+panggung adalah salinan di apps\theater\assets-dev\.
+
+Panduan lengkap: PANDUAN-TAMBAH-VIDEO.md di folder induk.

@@ -54,7 +54,12 @@
       <div id="note"></div>
       <h2 style="margin-top:14px">Manual</h2>
       <div>
-        <button onclick="kirim({intent:'PLAY_MODULE', alias:'tes', target:'tv1'})">Puter “tes” di TV1</button>
+        <select id="modul" title="modul dari manifest" style="min-width:130px"></select>
+        <select id="targetPuter" title="ke mana diputar" style="min-width:130px"></select>
+        <button onclick="puterModul()">▶ Puter</button>
+        <span id="vocabnote" class="warn" style="display:none"></span>
+      </div>
+      <div style="margin-top:6px">
         <button onclick="kirim({intent:'MOVE', to:'tv1'})">Pindah TV1</button>
         <button onclick="kirim({intent:'MOVE', to:'tv2'})">Pindah TV2</button>
         <button onclick="kirim({intent:'MOVE', to:'tv3'})">Pindah TV3</button>
@@ -135,7 +140,16 @@ function sapaKursi() {
 
 function ketukKursi() {
   const kursi = document.getElementById("kursiSapa").value || "komp1";
-  kirim({ intent: "PLAY_MODULE", alias: "tes", target: kursi });
+  const alias = document.getElementById("modul").value;
+  if (!alias) { $("#note").textContent = "⚠ belum ada modul di manifest"; return; }
+  kirim({ intent: "PLAY_MODULE", alias, target: kursi });
+}
+
+/** Puter modul yang dipilih ke target yang dipilih. */
+function puterModul() {
+  const alias = document.getElementById("modul").value;
+  if (!alias) { $("#note").textContent = "⚠ belum ada modul di manifest"; return; }
+  kirim({ intent: "PLAY_MODULE", alias, target: document.getElementById("targetPuter").value });
 }
 
 async function lepasKursi(seat) {
@@ -173,6 +187,46 @@ function esc(s) {
     sel.appendChild(o);
   }
 })();
+
+// isi pilihan target sekali (daftar target protokol, sama dengan /api/vocab)
+(function () {
+  const sel = document.getElementById("targetPuter");
+  const daftar = [
+    ["tv1", "TV1"], ["tv2", "TV2"], ["tv3", "TV3"], ["tv4", "TV4"],
+    ["all_tv", "— semua TV"], ["teacher", "— layar guru"],
+    ["all_student", "— semua murid"],
+  ];
+  for (let i = 1; i <= 20; i++) daftar.push(["komp" + i, "komp" + i]);
+  for (const [nilai, label] of daftar) {
+    const o = document.createElement("option");
+    o.value = nilai;
+    o.textContent = label;
+    sel.appendChild(o);
+  }
+})();
+
+/** Isi dropdown modul dari manifest (/api/vocab) — video yang baru
+ *  didaftarkan muncul sendiri, tanpa panel ini perlu disunting lagi. */
+let aliasTerakhir = null;
+async function isiKosakata() {
+  let v;
+  try {
+    v = await (await fetch("/api/vocab")).json();
+  } catch {
+    return; // segarkan() yang melaporkan cloud tidak terjangkau
+  }
+  const daftar = (v.aliases ?? []).map((a) => a.alias);
+  const sidik = daftar.join("|");
+  if (sidik === aliasTerakhir) return; // jangan bongkar pilihan guru tiap detik
+  aliasTerakhir = sidik;
+  const sel = document.getElementById("modul");
+  const dipilih = sel.value;
+  sel.innerHTML = daftar.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
+  if (daftar.includes(dipilih)) sel.value = dipilih;
+  const kosong = daftar.length === 0;
+  $("#vocabnote").style.display = kosong ? "inline" : "none";
+  $("#vocabnote").textContent = kosong ? "manifest kosong — belum ada modul" : "";
+}
 
 function badge(a) {
   const cls = ["played","scheduled","received","error","rejected"].includes(a.status) ? a.status : "";
@@ -232,6 +286,8 @@ async function segarkan() {
 }
 segarkan();
 setInterval(segarkan, 1000);
+isiKosakata();
+setInterval(isiKosakata, 5000);
 </script>
 </body>
 </html>
