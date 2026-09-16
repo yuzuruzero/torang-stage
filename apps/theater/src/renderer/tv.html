@@ -29,6 +29,13 @@
     object-fit:contain; background:#000; display:none;
   }
 
+  /* Scene non-video (mis. pixel office telemetri). Dimuat dalam iframe
+     ber-sandbox: halaman itu tidak bisa menyentuh jembatan preload. */
+  #scene {
+    position:absolute; inset:0; width:100%; height:100%;
+    border:0; background:#000; display:none;
+  }
+
   /* Info debug kecil di pojok (berguna saat dev & gladi) */
   #dbg {
     position:absolute; left:8px; bottom:6px; z-index:9;
@@ -44,6 +51,7 @@
       <div class="label"></div>
     </div>
     <video id="video" muted playsinline preload="auto"></video>
+    <iframe id="scene" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>
     <div id="dbg"></div>
   </div>
   <script src="./tv.js"></script>

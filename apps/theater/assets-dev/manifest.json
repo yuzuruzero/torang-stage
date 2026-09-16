@@ -1,6 +1,7 @@
 {
   "manifest_version": 1,
   "release": "dev-dummy-1",
+  "transisi_default": "tes",
   "modules": [
     {
       "id": "m99",

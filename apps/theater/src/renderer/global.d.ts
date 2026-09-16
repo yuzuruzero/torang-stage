@@ -13,6 +13,8 @@ type TvCue = {
   playAtEpoch: number;
 };
 
+type TvScene = { cue_id: string; scene: string; url: string };
+
 type TvEvent = { cue_id: string; tv: string; status: string; detail?: string };
 
 type PanelStatus = {
@@ -39,6 +41,7 @@ interface TorangBridge {
   boot: () => Promise<BootInfo>;
   onCue: (cb: (data: TvCue) => void) => void;
   onStop: (cb: () => void) => void;
+  onScene: (cb: (data: TvScene) => void) => void;
   onAudio: (cb: (a: AudioMsg) => void) => void;
   onStatus: (cb: (s: PanelStatus) => void) => void;
   onState: (cb: (data: unknown) => void) => void;
@@ -54,6 +57,7 @@ interface TorangBridge {
     seat_id: string;
   }) => Promise<unknown>;
   onStudentStatus: (cb: (data: unknown) => void) => void;
+  panelBukaTv: (mana: string) => void;
   panelUnbind: (seat: string) => void;
   panelResetMurid: () => void;
 

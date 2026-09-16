@@ -275,6 +275,31 @@ async function cmdPindah(cfg, args, flags) {
   await kirimIntent(cfg, { intent: "MOVE", to: target }, flags);
 }
 
+/** "torang buka office tv3" — scene non-video di TV (SWITCH_SCENE). */
+async function cmdBuka(cfg, args, flags) {
+  if (args.length < 2) salahPakai('format: torang buka <scene> <target-tv>   (contoh: torang buka office tv3)');
+  const target = normalisasiTarget(args[args.length - 1]);
+  if (!target) ditolak(`target tidak dikenal: "${args[args.length - 1]}"`);
+  if (!target.startsWith("tv") && target !== "all_tv") {
+    ditolak(`scene hanya untuk TV, bukan "${target}"`);
+  }
+  const scene = args.slice(0, -1).join(" ").trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(scene)) {
+    ditolak(`nama scene tidak sah: "${scene}" (huruf kecil/angka/-/_)`);
+  }
+  await kirimIntent(cfg, { intent: "OPEN_SCENE", scene, target }, flags);
+}
+
+/** "torang tutup tv3" — kembalikan layar itu ke idle. */
+async function cmdTutup(cfg, args, flags) {
+  const target = normalisasiTarget(args.join(" "));
+  if (!target) salahPakai('tutup layar mana? contoh: torang tutup tv3');
+  if (!target.startsWith("tv") && target !== "all_tv") {
+    ditolak(`tutup hanya untuk TV, bukan "${target}"`);
+  }
+  await kirimIntent(cfg, { intent: "CLOSE_SCENE", target }, flags);
+}
+
 async function cmdSay(cfg, args, flags) {
   const kalimat = args.join(" ");
   if (!kalimat) salahPakai('say butuh kalimat, contoh: torang say "Torang, sapa komputer enam"');
@@ -321,6 +346,8 @@ Keadaan panggung
 Aksi panggung
   torang sapa <komp>              contoh: torang sapa komp6
   torang puter <modul> <target>   contoh: torang puter tes tv1
+  torang buka <scene> <tv>       contoh: torang buka office tv3
+  torang tutup <tv>              kembalikan layar itu ke idle
   torang pindah <tv>              contoh: torang pindah tv3
   torang glow <target> [preset] [ms]   preset: pulse|breathe|wave (default pulse 4000)
   torang lanjut | ulang | stop
@@ -391,6 +418,10 @@ async function main() {
       case "stop":
       case "berhenti":
         return await kirimIntent(cfg, { intent: "STOP" }, flags);
+      case "buka":
+        return await cmdBuka(cfg, args, flags);
+      case "tutup":
+        return await cmdTutup(cfg, args, flags);
       case "say":
       case "kalimat":
         return await cmdSay(cfg, args, flags);

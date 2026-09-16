@@ -122,6 +122,12 @@ window.torang.onState((raw) => renderState(raw as StateSnap));
 
 const api = (window as unknown as Record<string, unknown>) as Record<string, unknown>;
 api.intent = (i: unknown) => window.torang.sendIntent(i);
+// Buka ulang window TV yang hilang. Window yang masih hidup tidak diganggu,
+// jadi aman ditekan kapan saja tanpa memutus tayangan yang sedang jalan.
+api.bukaTv = () => {
+  const sel = document.getElementById("bukaTv") as HTMLSelectElement | null;
+  window.torang.panelBukaTv(sel?.value ?? "semua");
+};
 api.sapaKursi = () => window.torang.sendIntent({ intent: "SAPA", target: sel.value || "komp1" });
 api.ketukKursi = () =>
   window.torang.sendIntent({ intent: "PLAY_MODULE", alias: "tes", target: sel.value || "komp1" });

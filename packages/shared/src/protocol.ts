@@ -129,6 +129,14 @@ export type ScenePayload = {
 export const GlowPresetSchema = z.enum(["pulse", "breathe", "wave"]);
 export type GlowPreset = z.infer<typeof GlowPresetSchema>;
 
+/** Nama scene non-video (mis. "office"). Cue hanya membawa NAMA ini; URL-nya
+ *  diresolusi LOKAL di mesin endpoint dari config — disiplin yang sama dengan
+ *  aset video. Artinya cue dari jaringan tidak pernah bisa menyuruh TV membuka
+ *  alamat sembarangan. */
+export const SceneNameSchema = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9_-]{0,31}$/, "nama scene: huruf kecil/angka/-/_");
+
 export const IntentSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("PLAY_MODULE"),
@@ -149,6 +157,14 @@ export const IntentSchema = z.discriminatedUnion("intent", [
     preset: GlowPresetSchema.default("pulse"),
     duration_ms: z.number().int().positive().max(60_000).default(4000),
   }),
+  /** "Torang, buka office di TV tiga" → SWITCH_SCENE (master §5). */
+  z.object({
+    intent: z.literal("OPEN_SCENE"),
+    scene: SceneNameSchema,
+    target: TargetSchema,
+  }),
+  /** "Torang, tutup TV tiga" — kembalikan layar itu ke idle. */
+  z.object({ intent: z.literal("CLOSE_SCENE"), target: TargetSchema }),
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 
@@ -331,6 +347,13 @@ export const ManifestModuleSchema = z.object({
 export const ManifestSchema = z.object({
   manifest_version: z.number(),
   release: z.string(),
+  /**
+   * Alias/id modul yang klip transisinya DIPINJAM oleh modul lain yang tidak
+   * punya klip sendiri (enter/exit/idle). Video materi baru jadi cukup satu
+   * berkas: Torang tetap bisa pindah layar dan tetap meng-idle memakai klip
+   * standar. Kosong = pakai modul pertama yang punya klip itu.
+   */
+  transisi_default: z.string().optional(),
   modules: z.array(ManifestModuleSchema).min(1),
 });
 export type Manifest = z.infer<typeof ManifestSchema>;

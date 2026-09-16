@@ -27,15 +27,29 @@ torang-stage tidak ketemu. Berkas yang sudah ada tidak pernah ditimpa diam-diam
 
 ## Dua hal yang bikin skill tidak terdeteksi
 
-1. **Salah folder.** Skill Hermes dibaca dari `~/.hermes/skills/` — di Windows
-   `C:\Users\<nama>\.hermes\skills\`. Folder `%LOCALAPPDATA%\hermes\` adalah
-   tempat **program**-nya dipasang, bukan tempat skill. Menaruh SKILL.md di sana
-   tidak akan terbaca.
+1. **Salah folder — dan dokumentasinya menyesatkan.** Dokumentasi resmi Hermes
+   menyebut `~/.hermes/skills/`. Di build Windows yang kami uji (v0.20.3,
+   16 Sep 2026) itu **tidak dibaca sama sekali**; yang dibaca adalah
+
+   ```
+   %LOCALAPPDATA%\hermes\skills\<kategori>\<nama-skill>\SKILL.md
+   ```
+
+   Perhatikan **folder kategori** di tengah (`productivity`, `creative`,
+   `github`, …). Nama folder itulah yang muncul di kolom Category
+   `hermes skills list` — bukan `category` di frontmatter. Skill yang ditaruh
+   langsung di akar folder skills, atau di `~/.hermes/skills/`, tidak pernah
+   muncul di daftar dan gagal **diam-diam**.
+
 2. **Tanpa frontmatter.** SKILL.md wajib diawali blok YAML berisi minimal
    `name`, `description`, `version`. Berkas yang langsung mulai dengan judul
    markdown dilewati.
 
-`SKILL.template.md` di folder ini sudah memenuhi keduanya.
+Pemasang di folder ini memilih folder skills berdasarkan yang benar-benar ADA
+di mesin (`%LOCALAPPDATA%` dulu, `~/.hermes` sebagai cadangan), menaruhnya di
+subfolder kategori (`-Kategori`, default `productivity`), lalu **memastikan
+namanya benar-benar muncul di `hermes skills list`** — karena menulis ke folder
+yang salah tidak memberi error apa pun.
 
 ## Mendaftarkan video baru lewat agent
 

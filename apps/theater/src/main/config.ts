@@ -12,6 +12,13 @@ export interface TheaterConfig {
   room: string;
   /** Folder aset lokal (cache konten; dev: assets-dev placeholder). */
   assets_dir: string;
+  /**
+   * Scene non-video yang boleh dibuka di TV: nama → URL, dipetakan LOKAL di
+   * mesin ini. Cue dari cloud hanya membawa NAMA scene, tidak pernah URL —
+   * jadi tidak ada cue dari jaringan yang bisa menyuruh TV membuka alamat
+   * sembarangan. Nama yang tidak ada di sini ditolak dengan ACK error.
+   */
+  scenes: Record<string, string>;
   /** true = 4 window kecil di 1 monitor (dev); false + kiosk = fullscreen per display. */
   dev_layout: boolean;
   kiosk: boolean;
@@ -38,6 +45,8 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
     branch: "dev",
     room: "r1",
     assets_dir: path.join(appRoot, "assets-dev"),
+    // Pixel office telemetri berjalan di mesin guru (spec v2 bagian B).
+    scenes: { office: "http://127.0.0.1:19000" },
     dev_layout: true,
     kiosk: false,
     dev_tv_count: 4,

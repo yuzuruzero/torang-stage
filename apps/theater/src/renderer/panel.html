@@ -50,6 +50,17 @@
       <button onclick="intent({intent:'MOVE', to:'tv4'})">Pindah TV4</button>
       <button onclick="intent({intent:'MOVE', to:'tv1'})">Pindah TV1</button>
     </div>
+    <div style="margin-top:8px">
+      <span class="muted">Window TV hilang?</span>
+      <select id="bukaTv" title="window TV yang mau dibuka ulang">
+        <option value="semua">semua yang hilang</option>
+        <option value="tv1">TV1</option>
+        <option value="tv2">TV2</option>
+        <option value="tv3">TV3</option>
+        <option value="tv4">TV4</option>
+      </select>
+      <button onclick="bukaTv()">↻ Buka ulang window TV</button>
+    </div>
     <div style="margin-top:6px">
       <select id="kursi" title="pilih kursi murid (● = online)"></select>
       <button onclick="sapaKursi()">👋 Sapa</button>

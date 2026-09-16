@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("torang", {
   onCue: (cb: (data: unknown) => void) =>
     ipcRenderer.on("tv:cue", (_e, data) => cb(data)),
   onStop: (cb: () => void) => ipcRenderer.on("tv:stop", () => cb()),
+  onScene: (cb: (data: unknown) => void) =>
+    ipcRenderer.on("tv:scene", (_e, data) => cb(data)),
   onAudio: (cb: (data: unknown) => void) =>
     ipcRenderer.on("panel:audio", (_e, data) => cb(data)),
   onStatus: (cb: (data: unknown) => void) =>
@@ -17,6 +19,7 @@ contextBridge.exposeInMainWorld("torang", {
     ipcRenderer.on("panel:state", (_e, data) => cb(data)),
   sendEvent: (payload: unknown) => ipcRenderer.send("tv:event", payload),
   sendIntent: (intent: unknown) => ipcRenderer.send("panel:intent", intent),
+  panelBukaTv: (mana: string) => ipcRenderer.send("panel:buka-tv", mana),
   panelUnbind: (seat: string) => ipcRenderer.send("panel:unbind", seat),
   panelResetMurid: () => ipcRenderer.send("panel:reset-murid"),
 

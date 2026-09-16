@@ -66,6 +66,11 @@
         <button onclick="kirim({intent:'MOVE', to:'tv4'})">Pindah TV4</button>
       </div>
       <div style="margin-top:6px">
+        <select id="targetScene" title="layar untuk scene" style="min-width:130px"></select>
+        <button onclick="bukaScene()">🖥 Buka office</button>
+        <button onclick="tutupScene()">✕ Tutup</button>
+      </div>
+      <div style="margin-top:6px">
         <select id="kursiSapa"></select>
         <button onclick="sapaKursi()">👋 Sapa</button>
         <button onclick="kirim({intent:'GLOW', target:'all_student', preset:'pulse', duration_ms:4000})">✨ Glow semua</button>
@@ -76,6 +81,7 @@
     <div class="card">
       <h2>Show-state & Endpoint</h2>
       <div>Torang di: <b id="screen">—</b> · arah terakhir: <span id="dir">—</span> · modul aktif: <span id="mod">—</span></div>
+      <div id="scenes" style="margin-top:4px; font-size:12px"></div>
       <table id="eps" style="margin-top:8px">
         <thead><tr><th>Endpoint</th><th>Peran</th><th>Target</th><th>Jam</th></tr></thead>
         <tbody></tbody>
@@ -145,6 +151,15 @@ function ketukKursi() {
   kirim({ intent: "PLAY_MODULE", alias, target: kursi });
 }
 
+/** Scene non-video (pixel office) di TV terpilih. Nama scene dipetakan ke URL
+ *  oleh config mesin guru — panel cuma mengirim namanya. */
+function bukaScene() {
+  kirim({ intent: "OPEN_SCENE", scene: "office", target: document.getElementById("targetScene").value });
+}
+function tutupScene() {
+  kirim({ intent: "CLOSE_SCENE", target: document.getElementById("targetScene").value });
+}
+
 /** Puter modul yang dipilih ke target yang dipilih. */
 function puterModul() {
   const alias = document.getElementById("modul").value;
@@ -186,6 +201,16 @@ function esc(s) {
     o.textContent = "komp" + i;
     sel.appendChild(o);
   }
+})();
+
+// pilihan layar untuk scene: TV saja (scene tidak berlaku di komp murid)
+(function () {
+  const sel = document.getElementById("targetScene");
+  for (const [nilai, label] of [["tv1","TV1"],["tv2","TV2"],["tv3","TV3"],["tv4","TV4"],["all_tv","\u2014 semua TV"]]) {
+    const o = document.createElement("option");
+    o.value = nilai; o.textContent = label; sel.appendChild(o);
+  }
+  sel.value = "tv3"; // TV3 = peran monitoring di spec pixel office
 })();
 
 // isi pilihan target sekali (daftar target protokol, sama dengan /api/vocab)
@@ -252,6 +277,11 @@ async function segarkan() {
   $("#screen").textContent = s.show.screen ?? "— (idle)";
   $("#dir").textContent = s.show.last_dir ?? "—";
   $("#mod").textContent = s.show.active_module ?? "—";
+  const sc = Object.entries(s.show.scenes ?? {});
+  $("#scenes").innerHTML = sc.length
+    ? "Scene terbuka: " + sc.map(([tv, n]) => `<b>${esc(tv)}</b> = ${esc(n)}`).join(" · ") +
+      ' <span style="color:#5a6699">(layar ini keluar dari cincin arah)</span>'
+    : "";
 
   const rows = s.endpoints.map((e) => {
     const jam =

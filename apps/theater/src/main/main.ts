@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CueSchema, expandTargets, type Cue } from "@torang/shared";
 import { loadTheaterConfig, type TheaterConfig } from "./config.js";
-import { createTeacherWindows, type TeacherWindows } from "./windows.js";
+import { createTeacherWindows, type TeacherWindows, bukaUlangTv, tvYangDiharapkan } from "./windows.js";
 import { CloudClient } from "./ws-client.js";
 import { loadAssetMap, resolveAssetUrl } from "./assets.js";
 import { StudentController } from "./student.js";
@@ -75,7 +75,7 @@ function panelStatus(partial: Record<string, unknown>): void {
 // ---------------------------------------------------------------------------
 // Eksekusi cue (whitelist ketat)
 // ---------------------------------------------------------------------------
-const SUPPORTED: ReadonlySet<string> = new Set(["PLAY_VIDEO", "STOP"]);
+const SUPPORTED: ReadonlySet<string> = new Set(["PLAY_VIDEO", "STOP", "SWITCH_SCENE"]);
 
 function handleCueMessage(cue: Cue): void {
   if (!client || !wins) return;
@@ -105,6 +105,38 @@ function handleCueMessage(cue: Cue): void {
     pending.clear();
     client.sendAck({ ...ackBase, status: "played", detail: "semua idle" });
     panelStatus({ lastCue: `${cue.cue_id} STOP` });
+    return;
+  }
+
+  if (cue.type === "SWITCH_SCENE") {
+    if (myTvs.length === 0) {
+      client.sendAck({ ...ackBase, status: "rejected", detail: "bukan target endpoint ini" });
+      return;
+    }
+    const nama = (cue.payload as Record<string, unknown>).scene;
+    // payload.scene === null artinya TUTUP scene (kembali idle).
+    if (nama === null || nama === undefined) {
+      for (const tv of myTvs) wins.tvs.get(tv)!.webContents.send("tv:stop");
+      client.sendAck({ ...ackBase, status: "played", detail: "scene ditutup" });
+      panelStatus({ lastCue: `${cue.cue_id} SCENE tutup` });
+      return;
+    }
+    // Nama → URL dipetakan di SINI, dari config mesin ini. Cue tidak pernah
+    // membawa alamat, jadi jaringan tidak bisa menyuruh TV membuka apa pun.
+    const url = typeof nama === "string" ? cfg.scenes?.[nama] : undefined;
+    if (!url) {
+      client.sendAck({
+        ...ackBase,
+        status: "error",
+        detail: `scene "${String(nama)}" tidak ada di config mesin ini (scenes: ${Object.keys(cfg.scenes ?? {}).join(", ") || "kosong"})`,
+      });
+      return;
+    }
+    for (const tv of myTvs) {
+      wins.tvs.get(tv)!.webContents.send("tv:scene", { cue_id: cue.cue_id, scene: nama, url });
+    }
+    client.sendAck({ ...ackBase, status: "played", detail: `scene ${nama}` });
+    panelStatus({ lastCue: `${cue.cue_id} SCENE ${nama}` });
     return;
   }
 
@@ -241,6 +273,27 @@ async function postRoster(pathname: string, body: Record<string, unknown>): Prom
   }
 }
 
+/**
+ * Buka ulang window TV yang hilang — tanpa menutup panggung.
+ * Insiden uji 16 Sep 2026: satu window TV lenyap saat kelas berjalan dan
+ * satu-satunya jalan pulih adalah menutup semuanya lalu menyalakan ulang.
+ */
+ipcMain.on("panel:buka-tv", (_e, mana: string) => {
+  if (!wins) return;
+  const daftar = mana && mana !== "semua" ? [mana] : tvYangDiharapkan(cfg);
+  const hilang = daftar.filter((tv) => {
+    const w = wins!.tvs.get(tv);
+    return !w || w.isDestroyed();
+  });
+  if (hilang.length === 0) {
+    panelStatus({ note: "semua window TV masih ada — tidak ada yang perlu dibuka" });
+    return;
+  }
+  const dibuka = bukaUlangTv(cfg, DIST_DIR, wins, hilang);
+  panelStatus({ note: `window TV dibuka ulang: ${dibuka.join(", ")}` });
+  console.log(`[theater] window TV dibuka ulang: ${dibuka.join(", ")}`);
+});
+
 ipcMain.on("panel:unbind", (_e, seat: string) => {
   if (typeof seat === "string" && /^komp([1-9]|1[0-9]|20)$/.test(seat)) {
     void postRoster("/api/unbind", { seat_id: seat });
@@ -285,6 +338,20 @@ app.whenReady().then(() => {
     onCue: (msg) => handleCueMessage(msg.cue),
     onStatus: (status, detail) => panelStatus({ cloud: status, ...(detail ? { note: detail } : {}) }),
     onClockOffset: (ms) => panelStatus({ clock_offset_ms: Math.round(ms) }),
+    onDigantikan: (alasan) => {
+      // App guru LAIN mengambil alih endpoint_id ini. App yang ini sudah tidak
+      // menerima cue apa pun — window-nya cuma jadi jebakan visual: tampil di
+      // koordinat yang sama dengan app baru, tapi mati. Insiden uji 16 Sep 2026
+      // menghabiskan waktu lama persis karena itu. Jadi: tutup diri.
+      console.error(`[theater] ${alasan} — app guru lain mengambil alih, menutup diri.`);
+      dialog.showErrorBox(
+        "Panggung ini digantikan",
+        "Ada app Panggung Torang LAIN yang baru dijalankan dan mengambil alih.\n\n" +
+          "App yang ini sudah tidak menerima cue, jadi ditutup supaya window-nya\n" +
+          "tidak tertukar dengan yang baru.\n\nPakai jendela panggung yang baru."
+      );
+      app.quit();
+    },
   });
   client.start();
 

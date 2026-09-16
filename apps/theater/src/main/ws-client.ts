@@ -16,7 +16,16 @@ export interface WsClientOpts {
   onCue: (msg: Extract<ServerMsg, { kind: "cue" }>) => void;
   onStatus: (status: "online" | "offline", detail?: string) => void;
   onClockOffset?: (offsetMs: number) => void;
+  /**
+   * Cloud menendang koneksi ini karena app guru LAIN memakai endpoint_id yang
+   * sama (kode close 4000). App yang lama sudah tidak berguna — window-nya
+   * masih tampil tapi tidak lagi menerima cue. Dipakai untuk menutup diri.
+   */
+  onDigantikan?: (alasan: string) => void;
 }
+
+/** Kode close yang dipakai cloud saat endpoint_id diambil alih (registry.ts). */
+export const KODE_DIGANTIKAN = 4000;
 
 export class CloudClient {
   private ws: WebSocket | null = null;
@@ -95,15 +104,24 @@ export class CloudClient {
       }
     });
 
-    const retry = () => {
+    const retry = (code?: number, alasan?: Buffer | string) => {
       if (this.pingTimer) clearInterval(this.pingTimer);
       this.pingTimer = null;
       if (this.closed) return;
+      // Digantikan app guru lain: JANGAN sambung ulang — kalau dicoba, dua app
+      // akan saling menendang bergantian dan gejalanya jadi kelihatan acak.
+      if (code === KODE_DIGANTIKAN) {
+        this.closed = true;
+        const teks = typeof alasan === "string" ? alasan : alasan?.toString() ?? "digantikan koneksi baru";
+        this.opts.onStatus("offline", teks);
+        this.opts.onDigantikan?.(teks);
+        return;
+      }
       this.opts.onStatus("offline");
       setTimeout(() => this.connect(), this.retryMs);
       this.retryMs = Math.min(this.retryMs * 2, 10_000);
     };
-    ws.on("close", retry);
+    ws.on("close", (code: number, alasan: Buffer) => retry(code, alasan));
     ws.on("error", () => {
       /* 'close' menyusul; jangan crash */
     });

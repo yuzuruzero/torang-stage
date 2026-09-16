@@ -46,10 +46,21 @@ Contoh: `__TORANG_CMD__ sapa komp6`
 | `glow <target> [pulse\|breathe\|wave] [ms]` | bingkai layar murid |
 | `lanjut` | cue berikutnya di modul aktif |
 | `ulang` | ulangi cue terakhir |
+| `buka <scene> <tv>` | tampilkan scene non-video, mis. `buka office tv3` (pixel office telemetri) |
+| `tutup <tv>` | kembalikan layar itu ke idle |
 | `stop` | hentikan semua, kembali idle |
 
 **Target sah:** `tv1`–`tv4` · `komp1`–`komp20` · `teacher` (layar guru) ·
-`all_tv` (semua TV) · `all_student` (semua komputer murid).
+`all_tv` (semua TV) · `all_student` (semua komputer murid). `buka` dan `tutup`
+hanya menerima TV.
+
+**Soal scene:** TV yang sedang menampilkan scene KELUAR dari cincin arah —
+Torang tidak bisa dipindahkan ke sana dan video tidak bisa diputar di sana.
+Kalau guru memintanya, perintahnya ditolak dengan pesan yang menyebut layar itu
+sedang dipakai; bacakan apa adanya dan tawarkan dua jalan yang disebut pesan itu
+(tutup dulu, atau pakai layar lain). Perhatikan juga: `stop` menutup scene juga,
+jadi kalau guru bilang layar monitoringnya hilang setelah STOP, itu perilaku yang
+memang dirancang — tinggal `buka office <tv>` lagi.
 
 ## Mendaftarkan video baru
 
@@ -61,6 +72,19 @@ Kalau guru bilang video/materi baru sudah ditaruh dan minta didaftarkan
    ```
    __TORANG_MODUL_CMD__ inbox
    ```
+
+   Kalau guru memberi **tautan** (bukan berkas yang sudah ditaruh), unduh dulu
+   — perintah ini yang memeriksa, bukan kamu:
+
+   ```
+   __TORANG_MODUL_CMD__ ambil "<url>"
+   ```
+
+   Ia menolak sendiri apa pun yang ternyata bukan video. Kalau ditolak,
+   **bacakan alasannya apa adanya dan berhenti** — jangan mencari tautan lain,
+   jangan mengunduh dengan cara lain, jangan menyarankan mematikan pemeriksaan.
+   Kalau berhasil, ia mencetak usulan yang sama seperti langkah 2; lanjut ke
+   langkah 3.
 
 2. Minta usulan untuk berkas yang dimaksud — ini **tidak menulis apa pun**:
 
@@ -88,7 +112,9 @@ Yang perlu kamu sampaikan kalau muncul di keluaran: modul yang cuma punya klip
 `materi` tidak bisa dipakai untuk perintah "pindah", dan video yang mau tayang
 di komputer murid harus disalin juga ke PC murid — itu di luar jangkauanmu.
 
-Jangan pernah menyunting `manifest.json` langsung. Hanya lewat perintah di atas.
+Jangan pernah menyunting `manifest.json` langsung, dan jangan pernah mengunduh
+berkas dengan caramu sendiri (curl, Invoke-WebRequest, browser). Hanya lewat
+perintah di atas — di situlah pemeriksaannya berada.
 
 ## Aturan keras
 

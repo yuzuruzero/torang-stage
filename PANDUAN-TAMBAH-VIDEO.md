@@ -41,6 +41,43 @@ Opsi yang sering dipakai:
 | `--dry` | tampilkan rencananya, jangan tulis |
 | `--durasi-ms=<n>` | kalau ffprobe tidak terpasang |
 
+## Dari tautan (URL)
+
+```
+tools\cli\torang-modul.cmd ambil "https://contoh.com/materi.mp4"
+tools\cli\torang-modul.cmd daftar "https://contoh.com/materi.mp4" --alias=hermes
+```
+
+`ambil` mengunduh + memeriksa lalu berhenti (berkasnya mendarat di
+`video-baru\`); `daftar` melakukan keduanya sekaligus. Untuk YouTube dan situs
+sejenis perlu `yt-dlp` terpasang; untuk tautan ke berkas video langsung tidak
+perlu apa-apa.
+
+**Yang tidak diunduh mentah-mentah.** Nama berkas dan Content-Type dari
+internet gampang dipalsukan, jadi bukan itu yang dipercaya:
+
+| Lapis | Yang dilakukan |
+|---|---|
+| 1 | Hanya `https` (`http` cuma untuk alamat LAN/localhost) — menutup `file://`, `ftp://` |
+| 2 | Batas ukuran (`--maks-mb`, default 2048) dicek sebelum & sesudah unduh |
+| 3 | Unduhan mendarat di karantina `video-baru\.unduh\`, bukan di folder aset |
+| 4 | **ffprobe harus bisa mendekodenya** — wajib punya stream video + durasi > 0 |
+| 5 | Nama & ekstensi ditentukan dari isi berkas, bukan dari URL |
+
+Lapis 4 yang menentukan. File `.exe` yang disajikan dengan Content-Type
+`video/mp4` tetap ditolak, karena yang diuji isinya, bukan labelnya. Berkas yang
+gagal langsung dihapus dan tidak pernah menyentuh `assets-dev\`. Tidak ada
+berkas unduhan yang dijalankan — hanya dibaca ffprobe lalu disalin.
+
+Batas kejujurannya: ini menutup "yang terunduh ternyata program", bukan video
+yang sengaja dirancang mengeksploitasi bug decoder. Untuk itu, jaga ffmpeg tetap
+mutakhir dan jangan menarik dari sumber sembarangan.
+
+**Hak cipta.** Untuk video milik sendiri atau berlisensi, aman. Mengunduh video
+orang lain dari YouTube melanggar ketentuan layanan mereka, dan memakainya di
+kelas berbayar punya risiko hak cipta tersendiri — ini keputusan bisnis, bukan
+soal teknis.
+
 ## Tiga hal yang perlu diingat
 
 **1. Satu klip `materi` cukup untuk "puter", tapi tidak untuk "pindah".**

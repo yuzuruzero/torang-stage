@@ -28,10 +28,22 @@ export interface ShowState {
   lastDir: Direction | null;
   /** Modul aktif (sumber klip transisi & materi). */
   activeModule: string | null;
+  /**
+   * TV yang sedang menampilkan scene non-video (mis. pixel office), tv → nama
+   * scene. TV yang ada di sini KELUAR dari cincin arah: Torang tidak pernah
+   * dipindahkan ke sana, supaya layar monitoring tidak tertimpa di tengah kelas
+   * (keputusan Hadi, 16 Sep 2026).
+   */
+  scenes: Record<string, string>;
 }
 
 export function initialShowState(): ShowState {
-  return { screen: null, lastDir: null, activeModule: null };
+  return { screen: null, lastDir: null, activeModule: null, scenes: {} };
+}
+
+/** Ring tanpa layar yang sedang dipakai scene. */
+export function ringTersedia(geom: RoomGeometry, state: ShowState): string[] {
+  return geom.ring.filter((tv) => !state.scenes[tv]);
 }
 
 /**

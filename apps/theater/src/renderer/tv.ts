@@ -9,12 +9,14 @@ const TV = params.get("tv") ?? "tv?";
 const elIdle = document.getElementById("idle")!;
 const elLabel = document.querySelector<HTMLElement>("#idle .label")!;
 const elVideo = document.getElementById("video") as HTMLVideoElement;
+const elScene = document.getElementById("scene") as HTMLIFrameElement;
 const elDbg = document.getElementById("dbg")!;
 
 elLabel.textContent = TV.toUpperCase();
 
 let timer: number | null = null;
 let activeCue: TvCue | null = null;
+let sceneAktif: string | null = null;
 
 function dbg(text: string): void {
   elDbg.textContent = `${TV} · ${text}`;
@@ -31,7 +33,34 @@ function showIdle(): void {
   elVideo.load();
   elVideo.style.display = "none";
   elVideo.loop = false;
+  tutupScene();
   elIdle.style.display = "flex";
+}
+
+/** Scene ketiga: halaman web (pixel office telemetri) di dalam iframe. */
+function tutupScene(): void {
+  if (elScene.getAttribute("src")) {
+    elScene.removeAttribute("src");
+  }
+  elScene.style.display = "none";
+  sceneAktif = null;
+}
+
+function bukaScene(url: string, nama: string): void {
+  if (timer !== null) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  activeCue = null;
+  elVideo.pause();
+  elVideo.removeAttribute("src");
+  elVideo.load();
+  elVideo.style.display = "none";
+  elIdle.style.display = "none";
+  elScene.src = url;
+  elScene.style.display = "block";
+  sceneAktif = nama;
+  dbg(`scene ${nama}`);
 }
 
 function playUrl(url: string, loop: boolean, onEnded: (() => void) | null): void {
@@ -111,6 +140,10 @@ function runCue(cue: TvCue): void {
 }
 
 window.torang.onCue((cue) => runCue(cue));
+window.torang.onScene((s) => {
+  bukaScene(s.url, s.scene);
+  window.torang.sendEvent({ cue_id: s.cue_id, tv: TV, status: "played", detail: `scene ${s.scene}` });
+});
 window.torang.onStop(() => {
   dbg("STOP → idle");
   showIdle();
