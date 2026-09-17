@@ -35,6 +35,7 @@ import {
   type PlanContext,
   planOpenScene,
   planCloseScene,
+  planReopenWindow,
 } from "./planner.js";
 import { Registry } from "./registry.js";
 import { Roster } from "./roster.js";
@@ -205,6 +206,10 @@ function executeIntent(intent: Intent): { plan: Plan; note?: string } {
       const plan = planCloseScene(planContext(), intent.target);
       return { plan };
     }
+    case "REOPEN_WINDOW": {
+      const plan = planReopenWindow(planContext(), intent.target);
+      return { plan };
+    }
     case "SAPA": {
       const binding = roster.bindingBySeat(intent.target);
       const plan = planSapa(planContext(), intent.target, binding?.nama ?? null);
@@ -337,7 +342,7 @@ app.get("/api/state", async () => ({
  *  /api/state — dipakai jembatan OpenClaw & panel untuk validasi lokal. */
 app.get("/api/vocab", async () => ({
   ok: true,
-  actions: ["puter", "pindah", "lanjut", "ulang", "stop", "sapa", "glow", "buka", "tutup"],
+  actions: ["puter", "pindah", "lanjut", "ulang", "stop", "sapa", "glow", "buka", "tutup", "buka-window"],
   aliases: manifest.modules.map((m) => ({ alias: m.alias, module_id: m.id })),
   targets: {
     tv: ["tv1", "tv2", "tv3", "tv4"],

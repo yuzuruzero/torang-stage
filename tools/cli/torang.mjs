@@ -300,6 +300,15 @@ async function cmdTutup(cfg, args, flags) {
   await kirimIntent(cfg, { intent: "CLOSE_SCENE", target }, flags);
 }
 
+/** "torang buka-window tv4" — buka ulang window TV yang tertutup di mesin guru. */
+async function cmdBukaWindow(cfg, args, flags) {
+  const target = normalisasiTarget(args.join(" ")) ?? "all_tv";
+  if (!target.startsWith("tv") && target !== "all_tv") {
+    ditolak(`buka ulang window hanya untuk TV, bukan "${target}"`);
+  }
+  await kirimIntent(cfg, { intent: "REOPEN_WINDOW", target }, flags);
+}
+
 async function cmdSay(cfg, args, flags) {
   const kalimat = args.join(" ");
   if (!kalimat) salahPakai('say butuh kalimat, contoh: torang say "Torang, sapa komputer enam"');
@@ -348,6 +357,7 @@ Aksi panggung
   torang puter <modul> <target>   contoh: torang puter tes tv1
   torang buka <scene> <tv>       contoh: torang buka office tv3
   torang tutup <tv>              kembalikan layar itu ke idle
+  torang buka-window <tv>        buka ulang window TV yang tertutup (pemulihan)
   torang pindah <tv>              contoh: torang pindah tv3
   torang glow <target> [preset] [ms]   preset: pulse|breathe|wave (default pulse 4000)
   torang lanjut | ulang | stop
@@ -418,6 +428,9 @@ async function main() {
       case "stop":
       case "berhenti":
         return await kirimIntent(cfg, { intent: "STOP" }, flags);
+      case "buka-window":
+      case "buka-layar":
+        return await cmdBukaWindow(cfg, args, flags);
       case "buka":
         return await cmdBuka(cfg, args, flags);
       case "tutup":

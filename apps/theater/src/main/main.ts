@@ -75,7 +75,12 @@ function panelStatus(partial: Record<string, unknown>): void {
 // ---------------------------------------------------------------------------
 // Eksekusi cue (whitelist ketat)
 // ---------------------------------------------------------------------------
-const SUPPORTED: ReadonlySet<string> = new Set(["PLAY_VIDEO", "STOP", "SWITCH_SCENE"]);
+const SUPPORTED: ReadonlySet<string> = new Set([
+  "PLAY_VIDEO",
+  "STOP",
+  "SWITCH_SCENE",
+  "REOPEN_WINDOW",
+]);
 
 function handleCueMessage(cue: Cue): void {
   if (!client || !wins) return;
@@ -98,6 +103,27 @@ function handleCueMessage(cue: Cue): void {
 
   const myTvs = expandTargets(cue.targets).filter((t) => wins!.tvs.has(t));
   const playAtLocal = Date.parse(cue.start_at) - Math.round(client.offsetMs);
+
+  // PENTING: ditangani SEBELUM penyaringan myTvs. Window yang hilang sudah
+  // dihapus dari peta, jadi kalau lewat filter itu justru selalu "bukan target
+  // endpoint ini" — persis TV yang perlu dibuka malah ditolak.
+  if (cue.type === "REOPEN_WINDOW") {
+    const diminta = expandTargets(cue.targets).filter((t) => t.startsWith("tv"));
+    const hilang = diminta.filter((tv) => {
+      const w = wins!.tvs.get(tv);
+      return !w || w.isDestroyed();
+    });
+    if (hilang.length === 0) {
+      client.sendAck({ ...ackBase, status: "played", detail: "semua window TV masih ada" });
+      panelStatus({ note: "buka ulang window: tidak ada yang hilang" });
+      return;
+    }
+    const dibuka = bukaUlangTv(cfg, DIST_DIR, wins, hilang);
+    client.sendAck({ ...ackBase, status: "played", detail: `dibuka ulang: ${dibuka.join(", ")}` });
+    panelStatus({ note: `window TV dibuka ulang: ${dibuka.join(", ")}` });
+    console.log(`[theater] window TV dibuka ulang lewat cue: ${dibuka.join(", ")}`);
+    return;
+  }
 
   if (cue.type === "STOP") {
     for (const [, w] of wins.tvs) w.webContents.send("tv:stop");

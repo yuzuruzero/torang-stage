@@ -9,6 +9,7 @@ import {
   planStop,
   planOpenScene,
   planCloseScene,
+  planReopenWindow,
   type PlanContext,
 } from "../src/planner.js";
 import { DEFAULT_GEOMETRY, initialShowState, type ShowState } from "../src/show-state.js";
@@ -341,5 +342,26 @@ describe("puter ke TV lain: layar lama ditinggalkan (HUKUM ilusi kontinu §6)", 
     expect(bersih.type).toBe("SWITCH_SCENE");
     expect(bersih.targets).toEqual(["tv2"]);
     expect(bersih.payload).toEqual({ scene: null });
+  });
+});
+
+describe("buka ulang window TV (pemulihan, bukan aksi panggung)", () => {
+  it("menghasilkan cue REOPEN_WINDOW tanpa mengubah show-state", () => {
+    const state: ShowState = { screen: "tv1", lastDir: "right", activeModule: "m99", scenes: {} };
+    const plan = planReopenWindow(ctx(state), "tv4");
+    expect(plan.cues).toHaveLength(1);
+    const cue = CueSchema.parse(plan.cues[0]);
+    expect(cue.type).toBe("REOPEN_WINDOW");
+    expect(cue.targets).toEqual(["tv4"]);
+    // Posisi Torang TIDAK boleh bergeser gara-gara pemulihan jendela.
+    expect(plan.state).toEqual(state);
+  });
+
+  it("semua TV sekaligus boleh", () => {
+    expect(planReopenWindow(ctx(), "all_tv").cues).toHaveLength(1);
+  });
+
+  it("bukan untuk komp murid", () => {
+    expect(() => planReopenWindow(ctx(), "komp3")).toThrow(PlanError);
   });
 });

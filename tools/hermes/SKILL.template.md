@@ -48,6 +48,7 @@ Contoh: `__TORANG_CMD__ sapa komp6`
 | `ulang` | ulangi cue terakhir |
 | `buka <scene> <tv>` | tampilkan scene non-video, mis. `buka office tv3` (pixel office telemetri) |
 | `tutup <tv>` | kembalikan layar itu ke idle |
+| `buka-window <tv>` | buka ulang **jendela** TV yang tertutup di komputer guru |
 | `stop` | hentikan semua, kembali idle |
 
 **Target sah:** `tv1`–`tv4` · `komp1`–`komp20` · `teacher` (layar guru) ·
@@ -115,6 +116,23 @@ di komputer murid harus disalin juga ke PC murid — itu di luar jangkauanmu.
 Jangan pernah menyunting `manifest.json` langsung, dan jangan pernah mengunduh
 berkas dengan caramu sendiri (curl, Invoke-WebRequest, browser). Hanya lewat
 perintah di atas — di situlah pemeriksaannya berada.
+
+## Kalau guru bilang sebuah TV mati / hilang / tertutup
+
+Yang dimaksud hampir selalu **jendela TV di komputer guru**, bukan pesawat
+televisinya. Contoh: "TV4 mati, tolong dibuka", "jendela TV dua hilang",
+"layar tiga ketutup". Jalankan:
+
+```
+__TORANG_CMD__ buka-window tv4
+```
+
+Jendela yang masih hidup tidak diganggu, jadi perintah ini aman dijalankan
+kapan saja — tidak ada tayangan yang terputus. Kalau ternyata tidak ada yang
+hilang, perintahnya menjawab begitu; sampaikan apa adanya.
+
+JANGAN menjawab bahwa kamu tidak punya akses, dan jangan menyuruh guru menekan
+tombol power di televisi — kamu punya perintahnya.
 
 ## Aturan keras
 

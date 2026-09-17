@@ -450,6 +450,26 @@ export function planCloseScene(ctx: PlanContext, target: string): Plan {
   };
 }
 
+/**
+ * "Torang, buka lagi window TV empat" — pemulihan window yang tertutup.
+ * Tidak mengubah show-state sama sekali: ini bukan aksi panggung, cuma
+ * menyuruh mesin guru membuka kembali jendela yang hilang.
+ */
+export function planReopenWindow(ctx: PlanContext, target: string): Plan {
+  if (!target.startsWith("tv") && target !== "all_tv") {
+    throw new PlanError(`buka ulang window hanya untuk TV, bukan ${target}`);
+  }
+  const cue: Cue = {
+    cue_id: ctx.seq(),
+    type: "REOPEN_WINDOW",
+    targets: [target],
+    start_at: iso(ctx.now),
+    payload: {},
+    session: ctx.session,
+  };
+  return { cues: [cue], state: ctx.state };
+}
+
 /** "Torang, stop" — semua kembali idle. */
 export function planStop(ctx: PlanContext): Plan {
   const cue: Cue = {

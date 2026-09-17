@@ -109,3 +109,35 @@ mencoret). "buka" (scene/pixel office) ditolak jujur: fase 2.
 Setara AltGr+huruf → mengganggu pengetikan aplikasi lain selama app hidup
 (insiden Claude desktop 11 Agu, terkonfirmasi hilang setelah pindah).
 Hotkey = tombol F: `Ctrl+Alt+F9/F10/F11`; `hotkeys:false` mematikan total.
+
+## D18 · (16 Sep 2026) Scene non-video di TV dirujuk lewat NAMA, bukan URL
+`SWITCH_SCENE` hanya membawa nama scene (`^[a-z0-9][a-z0-9_-]{0,31}$`); URL-nya
+dipetakan LOKAL di mesin endpoint (`scenes: { office: "http://127.0.0.1:19000" }`
+di `torang-theater.config.json`). Nama yang tidak ada di peta itu ditolak dengan
+ACK error. Alasan: disiplin yang sama dengan aset video — **cue dari jaringan
+tidak pernah bisa menyuruh TV membuka alamat sembarangan**, bahkan kalau cloud
+disusupi. Dijaga test otomatis "cue tidak boleh mengandung http".
+Konsekuensi: `pixel-office` dan `web-app` (master §F) jadi satu mekanisme, bukan
+dua scene terpisah — bedanya cuma isi peta di config mesin.
+
+## D19 · (16 Sep 2026) TV yang sedang ber-scene KELUAR dari cincin arah
+`ShowState.scenes` mencatat tv → nama scene. Selama scene terbuka, Torang tidak
+pernah dipindahkan ke layar itu: `puter`/`pindah`/`buka` ke TV tersebut ditolak
+dengan pesan untuk GURU ("tutup dulu"), bukan pesan programmer. Alasan: layar
+monitoring telemetri tidak boleh tertimpa video di tengah kelas (keputusan Hadi).
+`STOP` = saklar darurat, jadi ikut menutup semua scene. Kalau kelak layar
+monitoring dimaui BERTAHAN melewati STOP, satu-satunya yang perlu disentuh
+adalah baris `scenes: {}` di `planStop()`.
+
+## D20 · (16 Sep 2026) Klip transisi & idle boleh DIPINJAM (`transisi_default`)
+Hanya klip `materi` yang wajib milik modul sendiri. `enter_*`/`exit_*`/`idle`
+boleh dipinjam dari modul yang ditunjuk `transisi_default` di manifest (klip
+milik sendiri selalu menang). Alasan: video materi baru yang didaftarkan guru
+lewat `torang-modul` cuma punya satu berkas — tanpa peminjaman ini memutarnya
+mengunci Torang di satu layar. Nama aset yang dikirim adalah nama aset milik
+modul **PEMBERI**, karena berkas itulah yang ada di cache lokal tiap mesin.
+Catatan turunan (bug 16 Sep): `puter` ke TV lain kini juga **meninggalkan layar
+lama** dengan klip exit — dulu layar lama terus mengulang idle dan Torang tampak
+ada di tiga tempat sekaligus (melanggar HUKUM ilusi kontinu §6). Modul yang tak
+punya klip exit: layar lama dibersihkan ke idle kosong lewat `SWITCH_SCENE`
+`scene: null` — lebih baik hilang rapi daripada menggandakan Torang.

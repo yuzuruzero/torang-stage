@@ -69,6 +69,9 @@ export const CueTypeSchema = z.enum([
   "PLAY_VIDEO",
   "MOVE_CHARACTER", // di wire, cloud MENGURAI move jadi cue exit+enter (PLAY_VIDEO); tipe ini disediakan untuk kompatibilitas & panel
   "SWITCH_SCENE",
+  /** Buka ulang window TV yang hilang di mesin guru (bukan cue pertunjukan —
+   *  pemulihan operator; lihat catatan 2026-09-17a). */
+  "REOPEN_WINDOW",
   "OVERLAY_KNOCK",
   "OVERLAY_GREET",
   "SFX",
@@ -165,6 +168,9 @@ export const IntentSchema = z.discriminatedUnion("intent", [
   }),
   /** "Torang, tutup TV tiga" — kembalikan layar itu ke idle. */
   z.object({ intent: z.literal("CLOSE_SCENE"), target: TargetSchema }),
+  /** "Torang, buka lagi window TV empat" — window TV yang tertutup dibuka ulang
+   *  di mesin guru. Pemulihan, bukan aksi panggung. */
+  z.object({ intent: z.literal("REOPEN_WINDOW"), target: TargetSchema }),
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
 
