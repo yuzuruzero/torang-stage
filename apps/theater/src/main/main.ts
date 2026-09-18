@@ -17,6 +17,7 @@ import { createTeacherWindows, type TeacherWindows, bukaUlangTv, tvYangDiharapka
 import { CloudClient } from "./ws-client.js";
 import { loadAssetMap, resolveAssetUrl } from "./assets.js";
 import { StudentController } from "./student.js";
+import { Voice, type StatusVoice } from "./voice.js";
 
 const DIST_DIR = __dirname; // dist/
 const APP_ROOT = path.resolve(DIST_DIR, "..");
@@ -56,6 +57,7 @@ app.setPath(
 let wins: TeacherWindows | null = null;
 let client: CloudClient | null = null;
 let stateTimer: NodeJS.Timeout | null = null;
+let voice: Voice | null = null;
 
 interface PendingCue {
   expect: Set<string>; // tv yang belum lapor 'played'
@@ -392,6 +394,22 @@ app.whenReady().then(() => {
     console.log("[theater] hotkey global DIMATIKAN lewat config (hotkeys: false)");
   }
 
+  // --- Voice command (PTT) -------------------------------------------------
+  // Intent dari suara lewat parser grammar tertutup yang SAMA dengan jalur
+  // teks, lalu masuk sendIntent seperti tombol panel. Tidak ada jalan pintas
+  // dari suara langsung ke cue.
+  if (cfg.voice.enabled) {
+    voice = new Voice(cfg.voice, APP_ROOT, sendIntent, (s: StatusVoice) => {
+      wins?.panel.webContents.send("panel:voice", s);
+      if (s.intent) console.log(`[voice] "${s.didengar}" -> ${JSON.stringify(s.intent)} (${s.ms ?? "?"} ms)`);
+      else if (s.alasan) console.log(`[voice] "${s.didengar ?? ""}" DITOLAK: ${s.alasan}`);
+    });
+    const hasil = voice.mulai(cfg.cloud_api);
+    console.log(`[theater] ${hasil.ok ? "voice AKTIF" : "voice TIDAK aktif"}: ${hasil.pesan}`);
+    panelStatus({ note: hasil.ok ? `🎤 ${hasil.pesan}` : `⚠ voice: ${hasil.pesan}` });
+    if (!hasil.ok) voice = null;
+  }
+
   // Umpan state live ke panel operator (murid online, binding, show-state).
   // Fetch di MAIN (bukan renderer) — renderer file:// kena CORS.
   stateTimer = setInterval(async () => {
@@ -410,6 +428,7 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
+  voice?.berhenti();
   globalShortcut.unregisterAll();
   if (stateTimer) clearInterval(stateTimer);
   client?.stop();

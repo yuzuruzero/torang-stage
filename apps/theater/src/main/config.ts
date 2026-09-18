@@ -1,6 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 
+export interface VoiceConfig {
+  enabled: boolean;
+  /** Tombol PTT. Clicker presentasi umumnya mengirim salah satu tombol ini. */
+  tombol: string;
+  /** toggle = tekan mulai, tekan lagi berhenti (jalan dengan clicker apa pun).
+   *  hold menyusul kalau clicker yang dibeli mengirim sinyal tombol-dilepas. */
+  mode: "toggle" | "hold";
+  maks_detik: number;
+  model: string;
+  grammar: boolean;
+  denda_grammar: number;
+  threads: number;
+  /** Kosong = pakai perangkat rekam pertama yang terbaca. */
+  mic: string;
+}
+
 export interface TheaterConfig {
   /** teacher | student (student menyusul — fase 1 langkah 3). */
   mode: "teacher" | "student";
@@ -33,6 +49,12 @@ export interface TheaterConfig {
   /** Mode student: login otomatis tanpa klik (dev/smoke test) — nama ketik
    *  ATAU student_id dari cohort. */
   auto_login: { nama?: string; student_id?: string } | null;
+  /**
+   * Voice command (mode teacher). MATI secara bawaan: menyalakannya mengubah
+   * perilaku app di depan kelas, jadi harus keputusan sadar, bukan kejutan
+   * setelah memperbarui.
+   */
+  voice: VoiceConfig;
 }
 
 export function loadTheaterConfig(appRoot: string): TheaterConfig {
@@ -53,6 +75,17 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
     hotkeys: true,
     seat: null,
     auto_login: null,
+    voice: {
+      enabled: false,
+      tombol: "F8",
+      mode: "toggle",
+      maks_detik: 8,
+      model: "ggml-base-q8_0.bin",
+      grammar: false,
+      denda_grammar: 100,
+      threads: 8,
+      mic: "",
+    },
   };
   // --config=path CLI (aman untuk PowerShell/cmd, tanpa env var)
   const cliCfg = process.argv
@@ -76,7 +109,9 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
           `Perbaiki isi file itu (JSON valid, tanpa BOM) atau hapus, lalu jalankan lagi.`
       );
     }
-    const cfg = { ...defaults, ...parsed };
+    // Gabungan dangkal akan MENGHAPUS field voice yang tidak disebut config.
+    // Config lama (tanpa blok voice) harus tetap dapat bawaan yang lengkap.
+    const cfg = { ...defaults, ...parsed, voice: { ...defaults.voice, ...(parsed.voice ?? {}) } };
     if (cfg.mode !== "teacher" && cfg.mode !== "student") {
       throw new Error(
         `Config ${file}: mode tidak dikenal "${String(cfg.mode)}" (harus "teacher" atau "student").`

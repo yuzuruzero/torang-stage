@@ -218,10 +218,37 @@ function transkrip(wav) {
   };
 }
 
-async function ambil(p) {
-  const res = await fetch(`${cfg.api}${p}`);
+async function ambil(p, ms = 4000) {
+  const res = await fetch(`${cfg.api}${p}`, { signal: AbortSignal.timeout(ms) });
   if (!res.ok) throw new Error(`${p} -> HTTP ${res.status}`);
   return await res.json();
+}
+
+/**
+ * Ambil ulang daftar modul SEBELUM tiap ucapan.
+ *
+ * Kenapa tiap kali, bukan sekali saat mulai: modul bisa didaftarkan saat
+ * torang-dengar sedang berjalan (lewat `torang-modul daftar ...`, yang
+ * memanggil /api/manifest/reload di cloud). Kalau daftarnya cuma diambil
+ * sekali, modul baru akan ditolak sebagai "tidak ada di manifest" sampai
+ * program ini dinyalakan ulang - dan orang akan mengira pendaftarannya gagal.
+ *
+ * Ongkosnya satu permintaan HTTP ke localhost, beberapa milidetik. Kalau cloud
+ * sedang tidak menjawab, daftar terakhir yang berhasil tetap dipakai.
+ */
+let vocabTerakhir = null;
+async function segarkanVocab() {
+  try {
+    const baru = await ambil("/api/vocab", 1500);
+    const sebelum = (vocabTerakhir?.aliases ?? []).map((a) => a.alias).sort().join("|");
+    const sesudah = (baru?.aliases ?? []).map((a) => a.alias).sort().join("|");
+    if (vocabTerakhir && sebelum !== sesudah) {
+      console.log(warna("abu", `  (daftar modul berubah: ${(baru.aliases ?? []).map((a) => a.alias).join(", ")})`));
+      if (pakaiGrammar) perluBuatGrammar = true;
+    }
+    vocabTerakhir = baru;
+  } catch { /* pakai daftar terakhir yang berhasil */ }
+  return vocabTerakhir;
 }
 
 async function kirim(intent) {
@@ -235,6 +262,26 @@ async function kirim(intent) {
 
 // --- satu putaran ----------------------------------------------------------
 let nomor = 0;
+let perluBuatGrammar = false;
+
+/** Tulis ulang torang.gbnf dari daftar modul yang sekarang. */
+function buatUlangGrammar(vocab) {
+  const alias = [...new Set((vocab?.aliases ?? []).map((a) => String(a.alias).toLowerCase()))]
+    .filter((a) => /^[a-z0-9]+( [a-z0-9]+)*$/.test(a))
+    .sort();
+  if (alias.length === 0) return;
+  try {
+    const asli = fs.readFileSync(GBNF, "utf8");
+    const baris = `modul       ::= ${alias.map((a) => `"${a}"`).join(" | ")}`;
+    const baru = asli.replace(/^modul\s*::=.*$/m, baris);
+    if (baru !== asli) {
+      fs.writeFileSync(GBNF, baru, "utf8");
+      console.log(warna("abu", "  (torang.gbnf disesuaikan dengan daftar modul)"));
+    }
+  } catch (e) {
+    console.log(warna("kuning", `  !! gagal memperbarui grammar: ${e.message}`));
+  }
+}
 async function proses(wav, vocab, sumberAsli, teksLangsung) {
   nomor++;
   const t = teksLangsung !== undefined
@@ -324,6 +371,7 @@ async function utama() {
   let vocab = null;
   try {
     vocab = await ambil("/api/vocab");
+    vocabTerakhir = vocab;
   } catch (e) {
     console.log(warna("kuning", `  !! tidak bisa membaca /api/vocab (${e.message})`));
     console.log(warna("abu", "     parser tetap jalan, tapi nama modul tidak divalidasi di sini"));
@@ -383,7 +431,9 @@ async function utama() {
       continue;
     }
     console.log(warna("abu", " selesai"));
-    await proses(wav, vocab, "mic");
+    const vocabKini = await segarkanVocab();
+    if (perluBuatGrammar) { buatUlangGrammar(vocabKini); perluBuatGrammar = false; }
+    await proses(wav, vocabKini, "mic");
     console.log("");
   }
 }
