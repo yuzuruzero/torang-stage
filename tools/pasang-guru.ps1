@@ -116,7 +116,24 @@ if ($TanpaVoice) {
 } else {
   Write-Host "`n--- Jalur suara (voice command) ---" -ForegroundColor Cyan
 
-  if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+  # "ada" tidak cukup: ffmpeg bawaan aplikasi lain (mis. ImageMagick) sering
+  # lebih dulu di PATH tapi tidak punya dshow - perangkat masukan untuk mic.
+  function Ffmpeg-Bisa-Dshow {
+    param([string]$Exe)
+    if (-not $Exe) { return $false }
+    $simpan = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { $keluar = (& $Exe -hide_banner -devices 2>&1 | Out-String) } catch { $keluar = "" }
+    finally { $ErrorActionPreference = $simpan }
+    return ($keluar -match "(?m)^\s*D\w*\s+dshow\b")
+  }
+  $ffmpegSekarang = (Get-Command ffmpeg -ErrorAction SilentlyContinue).Source
+  if ($ffmpegSekarang -and -not (Ffmpeg-Bisa-Dshow $ffmpegSekarang)) {
+    Write-Host "ffmpeg di PATH ($ffmpegSekarang) tidak punya dshow - tidak bisa merekam mic." -ForegroundColor Yellow
+    Write-Host "Memasang ffmpeg penuh di sampingnya ..." -ForegroundColor Yellow
+    $ffmpegSekarang = $null
+  }
+  if (-not $ffmpegSekarang) {
     if ($adaWinget) {
       Write-Host "ffmpeg belum ada - memasang lewat winget ..." -ForegroundColor Yellow
       try {
@@ -130,8 +147,13 @@ if ($TanpaVoice) {
       Write-Host "winget tidak ada - ffmpeg harus dipasang manual." -ForegroundColor Yellow
     }
   }
-  if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
-    Write-Host "ffmpeg OK"
+  $ffmpegAkhir = (Get-Command ffmpeg -ErrorAction SilentlyContinue).Source
+  if ($ffmpegAkhir -and (Ffmpeg-Bisa-Dshow $ffmpegAkhir)) {
+    Write-Host "ffmpeg OK (punya dshow): $ffmpegAkhir"
+  } elseif ($ffmpegAkhir) {
+    Write-Host "ffmpeg di PATH masih yang tanpa dshow: $ffmpegAkhir" -ForegroundColor Yellow
+    Write-Host "  Yang penuh mungkin sudah terpasang tapi kalah urutan PATH." -ForegroundColor Yellow
+    Write-Host "  Cek nanti dengan: tools\voice\pasang-whisper.ps1 -CekSaja" -ForegroundColor Yellow
   } else {
     Write-Host "ffmpeg BELUM ada. Voice command belum bisa merekam mic." -ForegroundColor Yellow
     Write-Host "  Pasang: winget install Gyan.FFmpeg   lalu buka PowerShell baru." -ForegroundColor Yellow

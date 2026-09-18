@@ -124,8 +124,45 @@ function jalankan(program, args) {
   return { keluaran: r.stdout ?? "", galat: r.stderr ?? "", kode: r.status };
 }
 
+/**
+ * Cari ffmpeg yang BENAR-BENAR bisa merekam mic (punya perangkat `dshow`).
+ *
+ * Di PC guru ditemukan ffmpeg bawaan ImageMagick berada lebih dulu di PATH.
+ * Build seperti itu umumnya tanpa dshow, jadi memanggil "ffmpeg" begitu saja
+ * akan gagal merekam - dengan galat yang terlihat seperti mic-nya rusak.
+ */
+let _ffmpeg = null;
+function cariFfmpeg() {
+  if (_ffmpeg) return _ffmpeg;
+  const calon = ["ffmpeg"];
+  const wingetDir = path.join(process.env.LOCALAPPDATA ?? "", "Microsoft", "WinGet", "Packages");
+  try {
+    const tumpuk = [wingetDir];
+    while (tumpuk.length) {
+      const d = tumpuk.pop();
+      for (const isi of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, isi.name);
+        if (isi.isDirectory()) tumpuk.push(p);
+        else if (isi.name.toLowerCase() === "ffmpeg.exe") calon.push(p);
+      }
+    }
+  } catch { /* folder winget tidak ada - lewati */ }
+
+  for (const c of calon) {
+    const r = jalankan(c, ["-hide_banner", "-devices"]);
+    if (r.gagal) continue;
+    if (/^\s*D\w*\s+dshow\b/m.test((r.keluaran ?? "") + (r.galat ?? ""))) {
+      _ffmpeg = c;
+      if (c !== "ffmpeg") console.log(warna("abu", `  (ffmpeg dengan dshow: ${c})`));
+      return c;
+    }
+  }
+  _ffmpeg = "ffmpeg"; // biar galatnya muncul apa adanya, bukan disembunyikan
+  return _ffmpeg;
+}
+
 function daftarMic() {
-  const r = jalankan("ffmpeg", ["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"]);
+  const r = jalankan(cariFfmpeg(), ["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"]);
   const baris = (r.galat ?? "").split(/\r?\n/);
   const mic = [];
   let diAudio = false;
@@ -140,7 +177,7 @@ function daftarMic() {
 }
 
 function rekam(tujuan, mic) {
-  const r = jalankan("ffmpeg", [
+  const r = jalankan(cariFfmpeg(), [
     "-hide_banner", "-loglevel", "error",
     "-f", "dshow", "-i", `audio=${mic}`,
     "-ar", "16000", "-ac", "1", "-acodec", "pcm_s16le",
@@ -150,7 +187,7 @@ function rekam(tujuan, mic) {
 }
 
 function keWav(sumber, tujuan) {
-  const r = jalankan("ffmpeg", [
+  const r = jalankan(cariFfmpeg(), [
     "-hide_banner", "-loglevel", "error", "-i", sumber,
     "-ar", "16000", "-ac", "1", "-acodec", "pcm_s16le", "-y", tujuan,
   ]);

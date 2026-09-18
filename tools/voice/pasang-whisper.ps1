@@ -66,9 +66,26 @@ else           { Info "whisper-cli.exe belum ada" }
 if ($adaModel) { Ok   "model sudah ada ($([math]::Round((Get-Item $FileModel).Length / 1MB, 1)) MB)" }
 else           { Info "model ggml-$Model.bin belum ada" }
 
-$ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
-if ($ffmpeg) { Ok "ffmpeg ada di $($ffmpeg.Source) - perekaman uji bisa jalan" }
-else         { Awas "ffmpeg TIDAK ditemukan di PATH. Diperlukan oleh rekam-uji.ps1 untuk merekam mic." }
+# Bukan sekadar "ada": yang diperiksa apakah ffmpeg-nya punya dshow, sebab
+# itu yang dipakai merekam mic. Build ffmpeg bawaan aplikasi lain (mis.
+# ImageMagick) sering ada di PATH lebih dulu tapi tidak punya dshow.
+$ffmpegPath = Cari-Ffmpeg
+$ffmpegAda = Get-Command ffmpeg -ErrorAction SilentlyContinue
+if ($ffmpegPath) {
+  Ok "ffmpeg (punya dshow) di $ffmpegPath - perekaman mic bisa jalan"
+  if ($ffmpegAda -and $ffmpegAda.Source -ne $ffmpegPath) {
+    Awas "Tapi yang lebih dulu di PATH: $($ffmpegAda.Source) - dan itu TIDAK punya dshow."
+    Write-Host "       Perbaiki urutan PATH, atau sebut mic dengan path penuh saat merekam." -ForegroundColor Yellow
+  }
+} elseif ($ffmpegAda) {
+  Awas "ffmpeg ditemukan ($($ffmpegAda.Source)) tapi TIDAK punya dshow."
+  Write-Host "       Itu build bawaan aplikasi lain, bukan ffmpeg penuh. Perekaman mic tidak akan jalan." -ForegroundColor Yellow
+  Write-Host "       Pasang yang penuh:  winget install Gyan.FFmpeg" -ForegroundColor Yellow
+} else {
+  Awas "ffmpeg TIDAK ditemukan. Diperlukan untuk merekam mic."
+  Write-Host "       winget install Gyan.FFmpeg" -ForegroundColor Yellow
+}
+$ffmpeg = if ($ffmpegPath) { [pscustomobject]@{ Source = $ffmpegPath } } else { $null }
 
 if ($CekSaja) {
   Write-Host ""
