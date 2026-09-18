@@ -189,9 +189,44 @@ export function cocokkanAlias(didengar, aliases) {
  * Parse kalimat → intent whitelist. `vocab.aliases` = daftar alias modul dari
  * cloud (manifest). Hasil: {ok:true, intent, echo} atau {ok:false, error}.
  */
+/**
+ * Kata sopan dan partikel. Orang tidak bicara seperti mesin: "Torang, TOLONG
+ * putar tes di TV tiga" keluar begitu saja, dan menolaknya membuat guru harus
+ * mengingat kalimat yang kaku di depan kelas - beban yang dibuat-buat.
+ *
+ * Kenapa ini TIDAK melonggarkan pagar: kata-kata ini tidak membawa makna
+ * perintah apa pun, dan dibuang hanya di UJUNG kalimat (awal dan akhir), tidak
+ * pernah di tengah - jadi tidak bisa memotong nama modul atau nama scene. Yang
+ * tersisa tetap harus lolos grammar tertutup yang sama persis. Tidak ada
+ * kalimat baru yang jadi sah karenanya; yang berubah cuma kalimat yang tadinya
+ * ditolak padahal isinya sudah benar.
+ *
+ * Tidak dilaporkan ke guru (beda dengan pencocokan samar nama modul, yang
+ * SELALU dilaporkan): membuang "tolong" tidak bisa mengubah modul atau sasaran
+ * mana yang terpilih, jadi tidak ada yang perlu diperiksa manusia.
+ */
+export const KATA_PENGISI = new Set([
+  "tolong", "coba", "ayo", "silakan", "silahkan", "mohon", "minta",
+  "sekarang", "dong", "donk", "ya", "yah", "deh", "nih", "sih", "please",
+]);
+
+/** Buang kata pengisi di awal & akhir saja. Nama modul terdaftar tidak pernah
+ *  dibuang - modul yang kebetulan bernama "coba" tetap bisa dipanggil. */
+function buangPengisi(tokens, aliases) {
+  const dilindungi = new Set(aliases ?? []);
+  const bolehBuang = (t) => KATA_PENGISI.has(t) && !dilindungi.has(t);
+  let awal = 0;
+  let akhir = tokens.length;
+  while (awal < akhir && bolehBuang(tokens[awal])) awal++;
+  while (akhir > awal && bolehBuang(tokens[akhir - 1])) akhir--;
+  return awal === 0 && akhir === tokens.length ? tokens : tokens.slice(awal, akhir);
+}
+
 export function parseKalimat(kalimat, vocab) {
   const bersih = normalisasi(kalimat).replace(/^torang\s+/, "");
-  const tokens = bersih.split(" ").filter(Boolean);
+  let tokens = bersih.split(" ").filter(Boolean);
+  if (tokens.length === 0) return { ok: false, error: "kalimat kosong" };
+  tokens = buangPengisi(tokens, (vocab?.aliases ?? []).map((a) => a.alias));
   if (tokens.length === 0) return { ok: false, error: "kalimat kosong" };
 
   const aksi = tokens[0];

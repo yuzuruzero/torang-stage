@@ -38,10 +38,38 @@ if ([int]$Matches[1] -lt 20) { Gagal "Node.js $nodeVer terlalu tua (butuh >= 20)
 Write-Host "Node.js $nodeVer OK"
 
 # --- 2. Kunci ruangan (dipakai juga oleh semua PC murid) ---------------------
+# Kunci ini dipakai bersama SEMUA PC murid. Kunci berubah = seluruh kelas
+# tidak bisa masuk, dan gejalanya muncul di mesin murid, bukan di sini - jadi
+# orang akan mencari salahnya di tempat yang keliru.
+#
+# Karena itu kunci yang sudah ada di mesin ini dibaca dulu dan dipakai sebagai
+# bawaan. Memasang ulang seharusnya tidak menuntut orang mengingat sesuatu yang
+# sudah tersimpan di mesinnya sendiri.
+$kunciLama = ""
+$cfgLama = Join-Path $Tujuan "apps\theater\torang-theater.config.json"
+if (Test-Path $cfgLama) {
+  try {
+    $isiLama = [System.IO.File]::ReadAllText($cfgLama).TrimStart([char]0xFEFF)
+    $kunciLama = ([string](($isiLama | ConvertFrom-Json).room_key)).Trim()
+  } catch { $kunciLama = "" }  # config rusak - jangan gagalkan pemasangan
+}
+
+if (-not $RoomKey -and $kunciLama -match "^[A-Za-z0-9_-]+$") {
+  $RoomKey = $kunciLama
+  Write-Host "Kunci ruangan diambil dari pemasangan lama: $RoomKey" -ForegroundColor Green
+  Write-Host "  (pakai -RoomKey <kunci> kalau memang mau menggantinya)"
+}
+
 while ($RoomKey -notmatch "^[A-Za-z0-9_-]+$") {
   if ($RoomKey) { Write-Host "kunci hanya boleh huruf/angka/-/_ tanpa spasi" -ForegroundColor Yellow }
-  $RoomKey = Read-Host "Kunci ruangan kelas ini [Enter = dev-room-key]"
-  if (-not $RoomKey) { $RoomKey = "dev-room-key" }
+  if ($kunciLama) {
+    $RoomKey = Read-Host "Kunci ruangan kelas ini [Enter = $kunciLama]"
+    if (-not $RoomKey) { $RoomKey = $kunciLama }
+  } else {
+    Write-Host "PERHATIAN: kunci ini dipakai juga oleh semua PC murid." -ForegroundColor Yellow
+    $RoomKey = Read-Host "Kunci ruangan kelas ini [Enter = dev-room-key]"
+    if (-not $RoomKey) { $RoomKey = "dev-room-key" }
+  }
 }
 
 # --- 3. Unduh repo sebagai ZIP (tanpa git) -----------------------------------
@@ -58,6 +86,24 @@ if (Test-Path $tmpEkstrak) { Remove-Item $tmpEkstrak -Recurse -Force }
 Expand-Archive -Path $zip -DestinationPath $tmpEkstrak
 Move-Item (Join-Path $tmpEkstrak "torang-stage-main") $Tujuan
 Write-Host "Terpasang di $Tujuan"
+
+# --- 3b. Pakai ulang whisper dari pemasangan lama ----------------------------
+# Tanpa ini, tiap kali kode diperbarui orang harus menunggu unduhan 90 MB lagi
+# untuk berkas yang SAMA PERSIS - dan itu membuat orang enggan memperbarui,
+# yang jauh lebih mahal daripada ruang disk yang dihemat.
+if ($cadangan -and (Test-Path $cadangan)) {
+  $binLama   = Join-Path $cadangan "tools\voice\bin"
+  $modelLama = Join-Path $cadangan "tools\voice\model"
+  $tujuanVoice = Join-Path $Tujuan "tools\voice"
+  if ((Test-Path (Join-Path $binLama "whisper-cli.exe")) -and (Test-Path $tujuanVoice)) {
+    Copy-Item $binLama -Destination $tujuanVoice -Recurse -Force
+    Write-Host "whisper-cli dipakai ulang dari pemasangan lama (tidak diunduh lagi)"
+  }
+  if ((Test-Path $modelLama) -and @(Get-ChildItem $modelLama -Filter *.bin -ErrorAction SilentlyContinue).Count -gt 0 -and (Test-Path $tujuanVoice)) {
+    Copy-Item $modelLama -Destination $tujuanVoice -Recurse -Force
+    Write-Host "model whisper dipakai ulang dari pemasangan lama (hemat ~90 MB)"
+  }
+}
 
 # --- 4. npm install ----------------------------------------------------------
 Write-Host "npm install (sekali, beberapa menit - mengunduh Electron)..."

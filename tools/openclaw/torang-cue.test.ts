@@ -157,7 +157,10 @@ describe("kosakata baru: buka / tutup / buka window", () => {
   });
 
   it("tetap menolak kata di luar kosakata (grammar TERTUTUP)", () => {
-    const r = parseKalimat("Torang, tolong sapa komputer enam", vocab);
+    // Contohnya dulu memakai "tolong". Sejak "tolong" jadi kata pengisi
+    // (lihat KATA_PENGISI), ia tidak lagi menguji apa yang dimaksud tes ini -
+    // jadi contohnya yang diganti, bukan pemeriksaannya yang dilunakkan.
+    const r = parseKalimat("Torang, hapus komputer enam", vocab);
     expect(r.ok).toBe(false);
     // Pesannya menyebut seluruh kosakata yang sah — itu yang dibaca guru.
     expect(r.error).toContain("buka");
@@ -229,7 +232,7 @@ describe("pencocokan nama modul (satu-satunya tempat kemiripan boleh dipakai)", 
     // Ini yang membedakan pencocokan modul dari pencocokan aksi: di sini
     // kemiripan tidak bisa menciptakan perintah, karena aksi & sasaran sudah
     // terbaca sah lebih dulu.
-    expect(parseKalimat("Torang, tolong sapa komp lima", vocab).ok).toBe(false);
+    expect(parseKalimat("Torang, hapus komp lima", vocab).ok).toBe(false);
     expect(parseKalimat("Torang, putir tes di TV satu", vocab).ok).toBe(false);
     expect(parseKalimat("Torang, matikan semua TV", vocab).ok).toBe(false);
   });
@@ -288,5 +291,59 @@ describe("nama modul panjang - kekhawatiran Hadi 18 Sep 2026", () => {
     // Sengaja: kalau guru cuma menyebut separuh nama, lebih baik dia mengulang
     // daripada sistem menebak modul mana yang dia maksud.
     expect(cocokkanAlias("menyusun brand", daftar)).toBeNull();
+  });
+});
+
+describe("kata sopan & partikel - orang tidak bicara seperti mesin", () => {
+  // Kasus nyata 18 Sep 2026 di PC guru: mic sudah benar, Whisper sudah benar
+  // ("Torang tolong putar tes di TV tiga"), tapi parser menolaknya karena
+  // "tolong" dikira kata aksi.
+  it("kalimat yang GAGAL di PC guru kini diterima", () => {
+    expect(parseKalimat("torang tolong putar tes di tv tiga", vocab)).toEqual({
+      ok: true,
+      intent: { intent: "PLAY_MODULE", alias: "tes", target: "tv3" },
+    });
+  });
+
+  it("kata sopan lain di depan", () => {
+    for (const s of ["coba", "ayo", "silakan", "silahkan", "mohon", "minta"]) {
+      const h = parseKalimat(`torang ${s} puter tes di tv satu`, vocab);
+      expect(h.ok, s).toBe(true);
+      expect(h.intent.target, s).toBe("tv1");
+    }
+  });
+
+  it("partikel di belakang", () => {
+    expect(parseKalimat("torang puter tes di tv dua dong", vocab).ok).toBe(true);
+    expect(parseKalimat("torang stop ya", vocab)).toEqual({ ok: true, intent: { intent: "STOP" } });
+    expect(parseKalimat("torang tolong lanjut deh", vocab)).toEqual({ ok: true, intent: { intent: "GO" } });
+  });
+
+  it("beberapa kata sopan beruntun", () => {
+    expect(parseKalimat("torang tolong coba puter tes di tv tiga sekarang", vocab).ok).toBe(true);
+  });
+
+  // Pagar - ini yang membedakan "membuang kata kosong" dari "melonggarkan grammar"
+  it("kata sopan TIDAK dibuang di tengah kalimat", () => {
+    // Kalau dibuang di tengah, nama modul/scene bisa terpotong diam-diam.
+    const h = parseKalimat("torang buka tolong di tv tiga", vocab);
+    expect(h.ok).toBe(true);
+    expect(h.intent.scene).toBe("tolong");
+  });
+
+  it("modul yang KEBETULAN bernama kata sopan tetap bisa dipanggil", () => {
+    const v = { aliases: [{ alias: "coba", module_id: "m01" }] };
+    const h = parseKalimat("torang puter coba di tv empat", v);
+    expect(h.ok).toBe(true);
+    expect(h.intent.alias).toBe("coba");
+  });
+
+  it("kalimat yang isinya cuma kata sopan tetap DITOLAK", () => {
+    expect(parseKalimat("torang tolong ya dong", vocab).ok).toBe(false);
+  });
+
+  it("kata di luar kosakata tetap DITOLAK - tidak ada yang jadi longgar", () => {
+    expect(parseKalimat("torang tolong hapus tes di tv tiga", vocab).ok).toBe(false);
+    expect(parseKalimat("torang tolong puter pisang di tv tiga", vocab).ok).toBe(false);
   });
 });

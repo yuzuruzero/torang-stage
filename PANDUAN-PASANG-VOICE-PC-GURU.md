@@ -44,16 +44,15 @@ tempel perintah yang sama lagi.
 Sama, satu perintah - tapi **dua hal harus disiapkan dulu**, kalau tidak pemasangan
 gagal di tengah.
 
-### a. Catat kunci ruangan yang sekarang
+### a. Kunci ruangan: tidak perlu diapa-apakan
 
-Pemasangan menulis ulang config dengan kunci yang kamu berikan. Kunci berubah =
-komputer murid tidak bisa masuk.
+Pemasang **membaca sendiri** kunci dari config yang sudah ada di mesin itu dan
+memakainya lagi. Ia akan mencetak `Kunci ruangan diambil dari pemasangan lama: ...`
+- cocokkan sekilas, itu saja.
 
-Klik kanan **`Torang Panggung.bat`** di Desktop > **Edit**, cari baris:
-
-```
-start "Torang Cloud" cmd /k jalankan-cloud-lan.bat KUNCINYA-DI-SINI
-```
+Kunci ini dipakai bersama semua PC murid, jadi kunci berubah = seluruh kelas tidak
+bisa masuk, dan gejalanya muncul di mesin murid, bukan di sini. Berikan `-RoomKey`
+**hanya** kalau memang mau menggantinya (dan semua PC murid ikut diganti).
 
 ### b. Tutup panggung yang sedang jalan
 
@@ -65,7 +64,7 @@ Tutup panel operator, keempat window TV, dan jendela hitam "Torang Cloud".
 Baru jalankan:
 
 ```powershell
-iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-guru.ps1) } -RoomKey <kunci-dari-langkah-a>"
+iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-guru.ps1) }"
 ```
 
 > Perintah ini mengunduh pemasang ke memori, bukan ke dalam folder Torang. Itu yang
@@ -161,6 +160,11 @@ memutar rekaman yang sama alih-alih mendengarkan.
 
 Tempelkan **seluruh** keluaran langkah yang gagal, jangan diringkas. Yang paling sering
 menipu adalah galat yang menunjuk baris yang tidak bersalah.
+
+> **Kalau baru saja push ke GitHub:** URL `/main/` di raw.githubusercontent
+> menyimpan cache beberapa menit, jadi bisa saja yang terunduh masih versi lama.
+> Tunggu sebentar, atau ganti `main` di URL dengan sha commitnya
+> (`git rev-parse --short HEAD`) - URL ber-sha tidak pernah basi.
 
 | Yang terjadi | Artinya | Tindakan |
 |---|---|---|
