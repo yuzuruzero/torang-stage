@@ -77,7 +77,16 @@ $cfg = @{
   room        = "r1"
   dev_layout  = $true
   kiosk       = $false
-} | ConvertTo-Json
+  # Voice dinyalakan di sini, bukan disuruh disunting tangan setelah pasang.
+  # Kalau whisper gagal diunduh, app akan bilang sendiri di panel ("whisper-cli.exe
+  # belum ada") - itu jauh lebih baik daripada voice yang diam tanpa alasan.
+  voice       = @{
+    enabled    = (-not $TanpaVoice)
+    tombol     = "F8"
+    mode       = "toggle"
+    berkas_uji = ""
+  }
+} | ConvertTo-Json -Depth 5
 [System.IO.File]::WriteAllText((Join-Path $Tujuan "apps\theater\torang-theater.config.json"), $cfg)
 Write-Host "Config panggung ditulis (mode teacher, kunci=$RoomKey)"
 

@@ -22,6 +22,7 @@ Ia akan menanyakan kunci ruangan, lalu mengerjakan semuanya sendiri:
 | Shortcut Desktop | `Torang Panggung.bat` dibuat |
 | ffmpeg | dipasang lewat winget kalau belum ada |
 | whisper.cpp + model | diunduh (~90 MB), lalu **diverifikasi** dengan benar-benar mentranskripsikan 1 detik hening |
+| Voice di app | **dinyalakan langsung di config** (`F8`, mode toggle) - tidak perlu menyunting JSON sendiri |
 
 Kalau kunci ruangannya sudah kamu tahu dari awal, langsung isikan:
 
