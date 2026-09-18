@@ -82,16 +82,37 @@ const W = { abu: "\x1b[90m", hijau: "\x1b[32m", merah: "\x1b[31m", kuning: "\x1b
 const warna = (k, t) => `${W[k]}${t}${W.mati}`;
 
 // --- config ----------------------------------------------------------------
-function bacaConfig() {
-  let cfg = {};
+function bacaJson(file) {
   try {
-    cfg = JSON.parse(
-      fs.readFileSync(path.join(os.homedir(), ".torang-stage", "config.json"), "utf8").replace(/^﻿/, "")
-    );
-  } catch { /* pakai env/default */ }
+    return JSON.parse(fs.readFileSync(file, "utf8").replace(/^﻿/, ""));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cari alamat + kunci panggung, berurutan dari yang paling khusus:
+ *
+ *   1. env TORANG_STAGE_API / TORANG_STAGE_KEY
+ *   2. ~/.torang-stage/config.json              (ditulis pemasang jembatan OpenClaw)
+ *   3. apps/theater/torang-theater.config.json  (config panggung itu sendiri)
+ *
+ * Nomor 3 penting: di PC guru, pasang-guru.ps1 menulis kunci ruangan ke situ
+ * dan TIDAK menulis ~/.torang-stage/config.json. Tanpa ini torang-dengar akan
+ * memakai "dev-room-key", ditolak cloud, dan orang akan mengira mic atau
+ * Whisper yang rusak - padahal cuma kuncinya beda.
+ */
+function bacaConfig() {
+  const jembatan = bacaJson(path.join(os.homedir(), ".torang-stage", "config.json")) ?? {};
+  const panggung = bacaJson(path.resolve(DIR, "..", "..", "apps", "theater", "torang-theater.config.json")) ?? {};
+  const asal = process.env.TORANG_STAGE_KEY ? "env TORANG_STAGE_KEY"
+    : jembatan.room_key ? "~/.torang-stage/config.json"
+    : panggung.room_key ? "apps/theater/torang-theater.config.json"
+    : "bawaan";
   return {
-    api: process.env.TORANG_STAGE_API ?? cfg.api ?? "http://127.0.0.1:8787",
-    room_key: process.env.TORANG_STAGE_KEY ?? cfg.room_key ?? "dev-room-key",
+    api: process.env.TORANG_STAGE_API ?? jembatan.api ?? panggung.cloud_api ?? "http://127.0.0.1:8787",
+    room_key: process.env.TORANG_STAGE_KEY ?? jembatan.room_key ?? panggung.room_key ?? "dev-room-key",
+    asal,
   };
 }
 const cfg = bacaConfig();
@@ -223,6 +244,9 @@ async function proses(wav, vocab, sumberAsli, teksLangsung) {
           catatan.kirim = "ok";
         } else {
           console.log(`  ${warna("merah", "DITOLAK CLOUD:")} HTTP ${r.http} ${r.body?.error ?? ""}`);
+          if (r.http === 401 || r.http === 403) {
+            console.log(`  ${warna("kuning", "         :")} kunci ruangan kemungkinan beda. Dipakai: "${cfg.room_key}" (dari ${cfg.asal})`);
+          }
           catatan.kirim = `gagal ${r.http}`;
         }
       } catch (e) {
@@ -265,6 +289,7 @@ async function utama() {
   console.log("");
   console.log(warna("biru", "=== Torang dengar ==="));
   console.log(`    Panggung : ${cfg.api}${kering ? warna("kuning", "   [--dry: tidak mengirim]") : ""}`);
+  console.log(`    Kunci    : ${cfg.room_key} ${warna("abu", `(dari ${cfg.asal})`)}`);
   console.log(`    Model    : ${path.basename(MODEL)}   Grammar: ${pakaiGrammar ? `NYALA (denda ${denda})` : "mati"}`);
   if (vocab?.aliases?.length) {
     console.log(`    Modul    : ${vocab.aliases.map((a) => a.alias).join(", ")}`);
