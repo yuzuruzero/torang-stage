@@ -268,6 +268,12 @@ async function proses(wav, vocab, sumberAsli, teksLangsung) {
     catatan.alasan = hasil.error;
   } else {
     console.log(`  ${warna("hijau", "intent   :")} ${JSON.stringify(hasil.intent)}`);
+    // Pencocokan modul yang tidak persis WAJIB kelihatan - kalau video yang
+    // salah tayang, guru harus bisa tahu kenapa tanpa membaca log.
+    if (hasil.mirip) {
+      console.log(`  ${warna("kuning", "         :")} modul "${hasil.mirip.didengar}" dianggap "${hasil.mirip.dipakai}"`);
+      catatan.mirip = hasil.mirip;
+    }
     catatan.hasil = "intent";
     catatan.intent = hasil.intent;
     if (kering) {

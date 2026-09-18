@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — modul JS polos (skrip mandiri utk WSL, tanpa tipe)
-import { bacaAngka, bacaTarget, parseKalimat } from "./torang-cue.mjs";
+import { bacaAngka, bacaTarget, parseKalimat, cocokkanAlias, jarakKata } from "./torang-cue.mjs";
 
 const vocab = {
   aliases: [
@@ -188,5 +188,105 @@ describe('sasaran "layar N" (sinonim TV, ditambahkan setelah uji suara 18 Sep 20
 
   it("sapa tetap hanya untuk komp, tidak menerima layar", () => {
     expect(parseKalimat("Torang, sapa layar lima").ok).toBe(false);
+  });
+});
+
+describe("pencocokan nama modul (satu-satunya tempat kemiripan boleh dipakai)", () => {
+  const daftar = ["tes", "instal hermes", "pengenalan ai"];
+
+  it("nama yang salah sedikit tetap sampai ke modul yang benar", () => {
+    // Whisper menulis "test" untuk "tes" - terbukti di PC guru 18 Sep 2026.
+    const h = parseKalimat("Torang, puter test di TV dua", vocab);
+    expect(h.ok).toBe(true);
+    expect(h.intent.alias).toBe("tes");
+    expect(h.mirip).toEqual({ didengar: "test", dipakai: "tes" });
+  });
+
+  it("nama yang persis TIDAK ditandai mirip", () => {
+    const h = parseKalimat("Torang, puter tes di TV dua", vocab);
+    expect(h.ok).toBe(true);
+    expect(h.mirip).toBeUndefined();
+  });
+
+  it("nama asing tetap ditolak, bukan dipaksa ke yang terdekat", () => {
+    expect(parseKalimat("Torang, puter pisang goreng di TV dua", vocab).ok).toBe(false);
+  });
+
+  it("dua alias yang sama dekat DITOLAK dengan menyebut keduanya", () => {
+    const h = cocokkanAlias("tes", ["tas", "tos"]);
+    expect(h.ambigu).toEqual(["tas", "tos"]);
+  });
+
+  it("kata pendek diperlakukan lebih ketat daripada kata panjang", () => {
+    // "tes" (3 huruf) -> ambang 1
+    expect(cocokkanAlias("teks", daftar)).toEqual({ alias: "tes", samar: true });
+    expect(cocokkanAlias("teksi", daftar)).toBeNull();
+    // "instal hermes" (13 huruf) -> ambang 3
+    expect(cocokkanAlias("instal hermez", daftar)).toEqual({ alias: "instal hermes", samar: true });
+  });
+
+  it("kemiripan TIDAK merembet ke pemanggil atau kata aksi", () => {
+    // Ini yang membedakan pencocokan modul dari pencocokan aksi: di sini
+    // kemiripan tidak bisa menciptakan perintah, karena aksi & sasaran sudah
+    // terbaca sah lebih dulu.
+    expect(parseKalimat("Torang, tolong sapa komp lima", vocab).ok).toBe(false);
+    expect(parseKalimat("Torang, putir tes di TV satu", vocab).ok).toBe(false);
+    expect(parseKalimat("Torang, matikan semua TV", vocab).ok).toBe(false);
+  });
+
+  it("jarakKata", () => {
+    expect(jarakKata("tes", "tes")).toBe(0);
+    expect(jarakKata("tes", "test")).toBe(1);
+    expect(jarakKata("", "abc")).toBe(3);
+    expect(jarakKata("kitten", "sitting")).toBe(3);
+  });
+});
+
+describe("nama modul panjang - kekhawatiran Hadi 18 Sep 2026", () => {
+  // "gimana kalo nama modulnya aneh2 dan sudah salah 1 huruf aja dianggap ga ada,
+  //  ini baru modul tes loh cuma satu kata, gimana kalo 2 kata 3 kata 4 kata"
+  //
+  // Kenyataannya terbalik: nama PANJANG justru lebih aman. Ambang jarak ikut
+  // panjang kata, dan nama panjang punya lebih banyak huruf yang tetap benar.
+  // Yang paling rapuh justru nama PENDEK seperti "tes" - persis yang dia temui.
+  const daftar = [
+    "tes",
+    "instal hermes",
+    "pengenalan meta ads",
+    "riset kata kunci lanjutan",
+    "menyusun brand guideline",
+    "menyusun brand identity",
+  ];
+
+  it("satu huruf salah tetap ketemu, berapa pun jumlah katanya", () => {
+    expect(cocokkanAlias("test", daftar).alias).toBe("tes");
+    expect(cocokkanAlias("instal hermez", daftar).alias).toBe("instal hermes");
+    expect(cocokkanAlias("pengenalan meta add", daftar).alias).toBe("pengenalan meta ads");
+    expect(cocokkanAlias("riset kata kunci lanjutkan", daftar).alias).toBe("riset kata kunci lanjutan");
+  });
+
+  it("kata Inggris yang ditulis sesuai bunyinya tetap ketemu", () => {
+    // Jarak hurufnya jauh (gaidlain vs guideline = 4), tapi dua dari tiga kata
+    // persis sama. Ditangkap pagar per-kata, bukan dengan melonggarkan ambang.
+    expect(cocokkanAlias("menyusun brand gaidlain", daftar).alias).toBe("menyusun brand guideline");
+    expect(cocokkanAlias("menyusun brand aidentiti", daftar).alias).toBe("menyusun brand identity");
+    expect(cocokkanAlias("pengenalan meta ets", daftar).alias).toBe("pengenalan meta ads");
+  });
+
+  it("dua nama yang berbagi dua kata awal TIDAK tertukar", () => {
+    expect(cocokkanAlias("menyusun brand guideline", daftar).alias).toBe("menyusun brand guideline");
+    expect(cocokkanAlias("menyusun brand identity", daftar).alias).toBe("menyusun brand identity");
+  });
+
+  it("kelonggaran per-kata tidak menerima kata yang benar-benar lain", () => {
+    expect(cocokkanAlias("menyusun brand pisang", daftar)).toBeNull();
+    expect(cocokkanAlias("pengenalan kecerdasan buatan", daftar)).toBeNull();
+    expect(cocokkanAlias("pisang goreng keju", daftar)).toBeNull();
+  });
+
+  it("kata yang hilang membuat jumlah kata berbeda - tetap ditolak", () => {
+    // Sengaja: kalau guru cuma menyebut separuh nama, lebih baik dia mengulang
+    // daripada sistem menebak modul mana yang dia maksud.
+    expect(cocokkanAlias("menyusun brand", daftar)).toBeNull();
   });
 });
