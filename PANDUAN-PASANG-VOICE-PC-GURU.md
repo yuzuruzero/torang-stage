@@ -106,6 +106,54 @@ node torang-dengar.mjs --daftar-mic
 Tekan Enter, ucapkan salah satu kalimat dari `KALIMAT-BAKU-VOICE.md`, misalnya
 **"Torang, puter tes di TV tiga"**.
 
+**4. Nyalakan voice DI DALAM app (push-to-talk, tanpa jendela PowerShell).**
+
+Ini bentuk yang dipakai di kelas. Buka `apps\theater\torang-theater.config.json`,
+tambahkan atau ubah blok `voice`:
+
+```json
+  "voice": {
+    "enabled": true,
+    "tombol": "F8",
+    "berkas_uji": ""
+  }
+```
+
+Lalu jalankan `npm run guru`. Di log panggung harus muncul satu baris:
+
+```
+  voice siap - F8 (toggle), mic: <nama mic>
+```
+
+Tekan **F8**, ucapkan kalimatnya, tekan **F8** lagi. Videonya harus tayang - dan tidak
+boleh ada satu pun kedipan jendela hitam.
+
+**4b. Kalau mesin itu TIDAK punya mic.**
+
+Isi `berkas_uji` dengan sebuah rekaman; tombol F8 akan memutar berkas itu lewat rantai
+yang sama persis, tanpa merekam apa pun:
+
+```json
+  "voice": {
+    "enabled": true,
+    "tombol": "F8",
+    "berkas_uji": "rekaman-mentah/tes3.m4a"
+  }
+```
+
+Path relatif dihitung dari `tools\voice`. Barisnya jadi:
+
+```
+  voice siap - F8 (toggle), BERKAS UJI tes3.m4a (mic tidak dipakai)
+```
+
+Satu kali tekan F8 = satu kali putar. Yang terbukti dengan ini: voice benar-benar hidup
+di dalam app, Whisper jalan dari dalam proses Electron, parser dipanggil, dan cue-nya
+sampai ke TV. Yang **belum** terbukti: penangkapan mic - itu saja.
+
+**Kosongkan lagi `berkas_uji` sebelum dipakai di kelas**, kalau tidak F8 akan selalu
+memutar rekaman yang sama alih-alih mendengarkan.
+
 ---
 
 ## Kalau ada yang tidak beres
@@ -123,6 +171,10 @@ menipu adalah galat yang menunjuk baris yang tidak bersalah.
 | `--ucap` gagal kirim, HTTP 401/403 | kunci ruangan beda | bandingkan baris `Kunci :` dengan isi Desktop bat |
 | `--ucap` jalan, `--daftar-mic` kosong | belum ada mic, atau izin Windows tertutup | Settings > Privacy & security > Microphone: nyalakan **"Microphone access"** DAN **"Let desktop apps access your microphone"**, lalu PowerShell baru |
 | mic jalan tapi kalimat ditolak | Whisper salah dengar | tempel baris `didengar :` - itu bahan memperbaiki tabel salah-dengar |
+| `voice siap` tidak muncul sama sekali | `voice.enabled` masih `false` | perbaiki config, jalankan ulang `npm run guru` |
+| `tombol F8 sudah dipakai app lain` | program lain merebut F8 | ganti `tombol` jadi `F9` atau `CommandOrControl+Shift+Space` |
+| `berkas_uji tidak ada: ...` | path salah | path relatif dihitung dari `tools\voice`; cek dengan `dir tools\voice\rekaman-mentah` |
+| F8 ditekan, tidak terjadi apa-apa | panggung belum tersambung ke cloud | cek panel operator dulu - voice memakai sambungan yang sama |
 
 ---
 

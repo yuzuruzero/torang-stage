@@ -15,6 +15,9 @@ export interface VoiceConfig {
   threads: number;
   /** Kosong = pakai perangkat rekam pertama yang terbaca. */
   mic: string;
+  /** Uji tanpa mic: tombol PTT memutar berkas ini lewat rantai yang sama.
+   *  Kosongkan untuk pemakaian sungguhan. */
+  berkas_uji: string;
 }
 
 export interface TheaterConfig {
@@ -85,6 +88,7 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
       denda_grammar: 100,
       threads: 8,
       mic: "",
+      berkas_uji: "",
     },
   };
   // --config=path CLI (aman untuk PowerShell/cmd, tanpa env var)

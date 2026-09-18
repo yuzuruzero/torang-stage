@@ -57,6 +57,19 @@ export interface VoiceConfig {
   threads: number;
   /** Nama perangkat mic (ffmpeg dshow). Kosong = pakai yang pertama terbaca. */
   mic: string;
+  /**
+   * Uji tanpa mic: kalau diisi path berkas suara, tombol PTT MEMUTAR berkas
+   * itu lewat rantai yang sama persis - whisper, normalisasi, parser, cue -
+   * alih-alih merekam.
+   *
+   * Gunanya bukan main-main. Mesin tanpa mic tetap bisa membuktikan empat dari
+   * lima bagian jalur voice bekerja di dalam app; yang tersisa belum terbukti
+   * cuma penangkapan mic-nya. Memisahkan "jalur app rusak" dari "mic rusak"
+   * jauh lebih murah daripada mencarinya nanti saat keduanya tercampur.
+   *
+   * Kosongkan untuk pemakaian sungguhan.
+   */
+  berkas_uji: string;
 }
 
 export interface StatusVoice {
@@ -90,6 +103,7 @@ export class Voice {
   private pewaktu: NodeJS.Timeout | null = null;
   private sibuk = false;
   private ffmpeg: string | null = null;
+  private ffmpegUbah: string | null = null;
   private vocab: { aliases?: { alias: string }[] } | null = null;
 
   constructor(cfg: VoiceConfig, appRoot: string, kirim: Kirim, lapor: Lapor) {
@@ -103,9 +117,8 @@ export class Voice {
     return path.join(this.dirVoice, nama);
   }
 
-  /** ffmpeg yang benar-benar punya dshow — bukan sekadar ada di PATH. */
-  private cariFfmpeg(): string | null {
-    if (this.ffmpeg) return this.ffmpeg;
+  /** Semua ffmpeg.exe yang mungkin ada: PATH dulu, lalu hasil pasangan winget. */
+  private calonFfmpeg(): string[] {
     const calon = ["ffmpeg"];
     const wg = path.join(process.env.LOCALAPPDATA ?? "", "Microsoft", "WinGet", "Packages");
     try {
@@ -119,10 +132,34 @@ export class Voice {
         }
       }
     } catch { /* folder winget tidak ada */ }
-    for (const c of calon) {
+    return calon;
+  }
+
+  /** ffmpeg yang benar-benar punya dshow — bukan sekadar ada di PATH. */
+  private cariFfmpeg(): string | null {
+    if (this.ffmpeg) return this.ffmpeg;
+    for (const c of this.calonFfmpeg()) {
       const r = jalankan(c, ["-hide_banner", "-devices"]);
       if (r.gagal) continue;
       if (/^\s*D\w*\s+dshow\b/m.test(r.keluaran + r.galat)) { this.ffmpeg = c; return c; }
+    }
+    return null;
+  }
+
+  /**
+   * ffmpeg APA SAJA yang bisa mengubah berkas jadi WAV. Tidak perlu dshow.
+   *
+   * Dipisah dari cariFfmpeg() dengan sengaja. Mesin tanpa mic sering cuma punya
+   * ffmpeg bawaan program lain (mis. ImageMagick) yang tidak punya dshow — dan
+   * mesin itulah yang paling butuh mode berkas uji. Memakai syarat dshow di
+   * sini berarti menolak persis pemakai yang dituju.
+   */
+  private cariFfmpegUbah(): string | null {
+    if (this.ffmpegUbah) return this.ffmpegUbah;
+    if (this.ffmpeg) { this.ffmpegUbah = this.ffmpeg; return this.ffmpeg; }
+    for (const c of this.calonFfmpeg()) {
+      const r = jalankan(c, ["-hide_banner", "-version"]);
+      if (!r.gagal && r.kode === 0) { this.ffmpegUbah = c; return c; }
     }
     return null;
   }
@@ -135,7 +172,7 @@ export class Voice {
       if (/DirectShow video devices/.test(b)) { diAudio = false; continue; }
       if (!diAudio || /Alternative name/.test(b)) continue;
       const m = b.match(/"([^"]+)"/);
-      if (m) return m[1];
+      if (m?.[1]) return m[1];
     }
     return null;
   }
@@ -158,21 +195,36 @@ export class Voice {
         return { ok: false, pesan: `${nama} belum ada — jalankan tools\\voice\\PASANG-WHISPER.bat` };
       }
     }
-    const ff = this.cariFfmpeg();
-    if (!ff) return { ok: false, pesan: "ffmpeg dengan dshow tidak ditemukan — perekaman mic tidak bisa jalan" };
+    const modeBerkas = this.cfg.berkas_uji.trim().length > 0;
+    let sumber: string;
 
-    const mic = this.cfg.mic || this.micPertama(ff);
-    if (!mic) return { ok: false, pesan: "tidak ada perangkat mic yang terbaca" };
-    this.cfg.mic = mic;
-
+    if (modeBerkas) {
+      const f = path.isAbsolute(this.cfg.berkas_uji)
+        ? this.cfg.berkas_uji
+        : path.resolve(this.dirVoice, this.cfg.berkas_uji);
+      if (!fs.existsSync(f)) return { ok: false, pesan: `berkas_uji tidak ada: ${f}` };
+      this.cfg.berkas_uji = f;
+      if (!this.cariFfmpegUbah()) {
+        return { ok: false, pesan: "ffmpeg tidak ditemukan — tidak bisa mengubah berkas uji jadi WAV" };
+      }
+      sumber = `BERKAS UJI ${path.basename(f)} (mic tidak dipakai)`;
+    } else {
+      const ff = this.cariFfmpeg();
+      if (!ff) return { ok: false, pesan: "ffmpeg dengan dshow tidak ditemukan — perekaman mic tidak bisa jalan" };
+      const mic = this.cfg.mic || this.micPertama(ff);
+      if (!mic) return { ok: false, pesan: "tidak ada perangkat mic yang terbaca" };
+      this.cfg.mic = mic;
+      sumber = `mic: ${mic}`;
+    }
     const terdaftar = globalShortcut.register(this.cfg.tombol, () => {
+      if (modeBerkas) { void this.prosesBerkasUji(apiUrl); return; }
       if (this.rekaman) void this.hentikanDanProses(apiUrl);
       else this.mulaiRekam();
     });
     if (!terdaftar) return { ok: false, pesan: `tombol ${this.cfg.tombol} sudah dipakai app lain` };
 
     this.lapor({ keadaan: "diam" });
-    return { ok: true, pesan: `voice siap — ${this.cfg.tombol} (${this.cfg.mode}), mic: ${mic}` };
+    return { ok: true, pesan: `voice siap — ${this.cfg.tombol} (${this.cfg.mode}), ${sumber}` };
   }
 
   private mulaiRekam() {
@@ -190,6 +242,30 @@ export class Voice {
     // Batas keras: kalau tombol kedua tidak pernah ditekan, ffmpeg berhenti
     // sendiri di -t, dan pewaktu ini yang memprosesnya.
     this.pewaktu = setTimeout(() => { void this.hentikanDanProses(null); }, (this.cfg.maks_detik + 1) * 1000);
+  }
+
+  /** Mode uji tanpa mic: ubah berkas jadi WAV lalu lewatkan rantai yang sama. */
+  private async prosesBerkasUji(apiUrl: string | null) {
+    if (this.sibuk) return;
+    this.sibuk = true;
+    this.lapor({ keadaan: "memproses" });
+    const wav = path.join(os.tmpdir(), `torang-voice-uji-${Date.now()}.wav`);
+    try {
+      const ff = this.cariFfmpegUbah() ?? "ffmpeg";
+      const r = jalankan(ff, [
+        "-hide_banner", "-loglevel", "error", "-i", this.cfg.berkas_uji,
+        "-ar", "16000", "-ac", "1", "-acodec", "pcm_s16le", "-y", wav,
+      ]);
+      if (r.kode !== 0 || !fs.existsSync(wav)) {
+        this.lapor({ keadaan: "memproses", alasan: `gagal mengubah berkas uji: ${r.galat.trim() || r.gagal || "?"}` });
+        return;
+      }
+      await this.proses(wav, apiUrl);
+    } finally {
+      this.sibuk = false;
+      fs.rmSync(wav, { force: true });
+      this.lapor({ keadaan: "diam" });
+    }
   }
 
   private async hentikanDanProses(apiUrl: string | null) {
@@ -232,9 +308,9 @@ export class Voice {
     const r = jalankan(this.berkas(path.join("bin", "whisper-cli.exe")), args);
     if (r.gagal) { this.lapor({ keadaan: "memproses", alasan: `whisper gagal: ${r.gagal}` }); return; }
 
-    const m = r.galat.match(/total time\s*=\s*([\d.]+)\s*ms/);
-    const mMuat = r.galat.match(/load time\s*=\s*([\d.]+)\s*ms/);
-    const ms = m && mMuat ? Math.round(parseFloat(m[1]) - parseFloat(mMuat[1])) : undefined;
+    const tTotal = r.galat.match(/total time\s*=\s*([\d.]+)\s*ms/)?.[1];
+    const tMuat = r.galat.match(/load time\s*=\s*([\d.]+)\s*ms/)?.[1];
+    const ms = tTotal && tMuat ? Math.round(parseFloat(tTotal) - parseFloat(tMuat)) : undefined;
 
     // Transkrip di STDOUT; log & timing di STDERR. Jangan digabung.
     const teks = r.keluaran.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).join(" ");
