@@ -11,7 +11,10 @@
 param(
   [string]$RoomKey = "",
   [string]$Repo = "yuzuruzero/torang-stage",
-  [string]$Tujuan = "$env:USERPROFILE\torang-stage"
+  [string]$Tujuan = "$env:USERPROFILE\torang-stage",
+  # Jalur suara (ffmpeg + whisper.cpp + model, ~90 MB) dipasang sekalian.
+  # Pakai -TanpaVoice kalau mesin ini memang tidak akan dipakai voice command.
+  [switch]$TanpaVoice
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,10 +23,16 @@ function Gagal($pesan) { Write-Host "`n[GAGAL] $pesan" -ForegroundColor Red; Rea
 Write-Host "=== Pasang Torang Stage - PC GURU (panggung) ===" -ForegroundColor Cyan
 
 # --- 1. Cek Node.js >= 20 ----------------------------------------------------
+$adaWinget = [bool](Get-Command winget -ErrorAction SilentlyContinue)
 try { $nodeVer = (node -v) 2>$null } catch { $nodeVer = $null }
 if (-not $nodeVer -or -not ($nodeVer -match "^v(\d+)\.")) {
+  if ($adaWinget) {
+    Write-Host "Node.js belum ada - memasang lewat winget ..." -ForegroundColor Yellow
+    & winget install --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements --silent
+    Gagal "Node.js baru dipasang. PATH baru terbaca di jendela BARU - tutup PowerShell ini, buka yang baru, lalu jalankan perintah yang sama lagi."
+  }
   Start-Process "https://nodejs.org/en/download"
-  Gagal "Node.js belum terpasang. Halaman unduhan sudah dibuka - install Node LTS, lalu jalankan pemasang ini lagi."
+  Gagal "Node.js belum terpasang dan winget tidak ada. Halaman unduhan sudah dibuka - install Node LTS, lalu jalankan pemasang ini lagi."
 }
 if ([int]$Matches[1] -lt 20) { Gagal "Node.js $nodeVer terlalu tua (butuh >= 20)." }
 Write-Host "Node.js $nodeVer OK"
@@ -101,8 +110,55 @@ try {
   if ($ipCfg) { $ipLan = $ipCfg.IPv4Address.IPAddress }
 } catch { }
 
+# --- 8. Jalur suara: ffmpeg + whisper.cpp + model ---------------------------
+if ($TanpaVoice) {
+  Write-Host "`nJalur suara dilewati (-TanpaVoice). Pasang nanti dengan: tools\voice\PASANG-WHISPER.bat"
+} else {
+  Write-Host "`n--- Jalur suara (voice command) ---" -ForegroundColor Cyan
+
+  if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+    if ($adaWinget) {
+      Write-Host "ffmpeg belum ada - memasang lewat winget ..." -ForegroundColor Yellow
+      try {
+        & winget install --id Gyan.FFmpeg --accept-source-agreements --accept-package-agreements --silent
+      } catch { Write-Host "winget gagal: $_" -ForegroundColor Yellow }
+      # winget menaruh ffmpeg di PATH mesin, tapi jendela INI tidak melihatnya.
+      # Baca ulang PATH supaya pemasangan whisper di bawah tetap bisa jalan.
+      $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+                  [Environment]::GetEnvironmentVariable("Path", "User")
+    } else {
+      Write-Host "winget tidak ada - ffmpeg harus dipasang manual." -ForegroundColor Yellow
+    }
+  }
+  if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
+    Write-Host "ffmpeg OK"
+  } else {
+    Write-Host "ffmpeg BELUM ada. Voice command belum bisa merekam mic." -ForegroundColor Yellow
+    Write-Host "  Pasang: winget install Gyan.FFmpeg   lalu buka PowerShell baru." -ForegroundColor Yellow
+  }
+
+  $pasangWhisper = Join-Path $Tujuan "tools\voice\pasang-whisper.ps1"
+  if (Test-Path $pasangWhisper) {
+    try {
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $pasangWhisper
+      if ($LASTEXITCODE -ne 0) { Write-Host "Pemasangan whisper belum tuntas - ulangi nanti dengan tools\voice\PASANG-WHISPER.bat" -ForegroundColor Yellow }
+    } catch {
+      Write-Host "Pemasangan whisper gagal: $_" -ForegroundColor Yellow
+      Write-Host "Ulangi nanti dengan: tools\voice\PASANG-WHISPER.bat" -ForegroundColor Yellow
+    }
+  } else {
+    Write-Host "tools\voice belum ada di repo ini - lewati." -ForegroundColor Yellow
+  }
+}
+
 Write-Host "`n=== SELESAI ===" -ForegroundColor Green
 Write-Host "Jalankan lewat 'Torang Panggung.bat' di Desktop (cloud + panggung sekaligus)."
+if (-not $TanpaVoice) {
+  Write-Host "Voice command: nyalakan panggung dulu, lalu di PowerShell baru:"
+  Write-Host "    cd `"$Tujuan\tools\voice`"" -ForegroundColor Cyan
+  Write-Host "    node torang-dengar.mjs --ucap `"Torang, puter tes di TV tiga`"   (uji tanpa mic)" -ForegroundColor Cyan
+  Write-Host "    .\TORANG-DENGAR.bat                                            (pakai mic)" -ForegroundColor Cyan
+}
 if ($ipLan) {
   Write-Host ""
   Write-Host ">>> Untuk installer PC MURID, isikan: <<<" -ForegroundColor Cyan

@@ -1,0 +1,138 @@
+# Memasang Panggung Torang + voice command
+
+Ditulis 18 Sep 2026.
+
+---
+
+## PC BARU: satu perintah
+
+Buka **PowerShell** di PC itu, tempel satu baris ini, Enter:
+
+```powershell
+iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-guru.ps1) }"
+```
+
+Ia akan menanyakan kunci ruangan, lalu mengerjakan semuanya sendiri:
+
+| | |
+|---|---|
+| Node.js | dipasang lewat winget kalau belum ada |
+| Torang Stage | diunduh dari GitHub + `npm install` |
+| Config panggung | ditulis dengan kunci ruangan yang kamu isi |
+| Shortcut Desktop | `Torang Panggung.bat` dibuat |
+| ffmpeg | dipasang lewat winget kalau belum ada |
+| whisper.cpp + model | diunduh (~90 MB), lalu **diverifikasi** dengan benar-benar mentranskripsikan 1 detik hening |
+
+Kalau kunci ruangannya sudah kamu tahu dari awal, langsung isikan:
+
+```powershell
+iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-guru.ps1) } -RoomKey kunciku"
+```
+
+Mesin yang tidak akan dipakai voice command: tambahkan `-TanpaVoice` supaya tidak
+mengunduh 90 MB percuma.
+
+**Satu-satunya jeda yang mungkin:** kalau Node.js baru saja dipasang, PATH-nya belum
+terbaca di jendela itu. Skrip akan bilang begitu - tutup PowerShell, buka yang baru,
+tempel perintah yang sama lagi.
+
+---
+
+## PC GURU yang sudah ada versi lama
+
+Sama, satu perintah - tapi **dua hal harus disiapkan dulu**, kalau tidak pemasangan
+gagal di tengah.
+
+### a. Catat kunci ruangan yang sekarang
+
+Pemasangan menulis ulang config dengan kunci yang kamu berikan. Kunci berubah =
+komputer murid tidak bisa masuk.
+
+Klik kanan **`Torang Panggung.bat`** di Desktop > **Edit**, cari baris:
+
+```
+start "Torang Cloud" cmd /k jalankan-cloud-lan.bat KUNCINYA-DI-SINI
+```
+
+### b. Tutup panggung yang sedang jalan
+
+Pemasang **memindahkan** folder lama (tidak menghapus - jadi cadangannya ada sebagai
+`torang-stage-lama-<tanggal>`). Windows menolak memindahkan folder yang sedang dipakai.
+
+Tutup panel operator, keempat window TV, dan jendela hitam "Torang Cloud".
+
+Baru jalankan:
+
+```powershell
+iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-guru.ps1) } -RoomKey <kunci-dari-langkah-a>"
+```
+
+> Perintah ini mengunduh pemasang ke memori, bukan ke dalam folder Torang. Itu yang
+> membuatnya aman memindahkan folder lama - beda dengan menjalankan
+> `tools\pasang-guru.ps1` dari dalam folder yang mau dipindahkan itu sendiri.
+
+---
+
+## Sesudah terpasang: coba
+
+**1. Nyalakan panggung** - double-click `Torang Panggung.bat` di Desktop.
+Harus muncul: jendela "Torang Cloud", panel operator, dan 4 window TV.
+
+**2. Uji sambungan tanpa mic dan tanpa Whisper.** Buka PowerShell baru:
+
+```powershell
+cd $env:USERPROFILE\torang-stage\tools\voice
+node torang-dengar.mjs --ucap "Torang, puter tes di TV tiga"
+```
+
+Harus terlihat:
+
+```
+    Kunci    : <kuncimu> (dari apps/theater/torang-theater.config.json)
+  intent   : {"intent":"PLAY_MODULE","alias":"tes","target":"tv3"}
+  TERKIRIM : PLAY_VIDEO->[tv3]
+```
+
+**Lalu lihat window TV3 - videonya harus benar-benar jalan.** "TERKIRIM" cuma berarti
+cue keluar dari cloud; yang membuktikan sampai ke layar adalah gambarnya bergerak.
+
+**3. Uji dengan mic:**
+
+```powershell
+node torang-dengar.mjs --daftar-mic
+.\TORANG-DENGAR.bat
+```
+
+Tekan Enter, ucapkan salah satu kalimat dari `KALIMAT-BAKU-VOICE.md`, misalnya
+**"Torang, puter tes di TV tiga"**.
+
+---
+
+## Kalau ada yang tidak beres
+
+Tempelkan **seluruh** keluaran langkah yang gagal, jangan diringkas. Yang paling sering
+menipu adalah galat yang menunjuk baris yang tidak bersalah.
+
+| Yang terjadi | Artinya | Tindakan |
+|---|---|---|
+| Berhenti minta buka PowerShell baru | Node.js baru dipasang, PATH belum terbaca | tutup, buka baru, ulangi perintah yang sama |
+| `Move-Item` gagal | ada yang masih memakai folder lama | tutup panggung + Explorer yang membuka folder itu |
+| `dir tools\voice` kosong | kode di GitHub belum berisi jalur suara | pastikan push terakhir sudah masuk |
+| Whisper gagal verifikasi | Visual C++ Redistributable belum ada | pasang "Microsoft Visual C++ Redistributable x64", lalu `tools\voice\PASANG-WHISPER.bat` |
+| ffmpeg tidak terpasang | winget tidak ada di mesin itu | `winget install Gyan.FFmpeg`, atau pasang manual |
+| `--ucap` gagal kirim, HTTP 401/403 | kunci ruangan beda | bandingkan baris `Kunci :` dengan isi Desktop bat |
+| `--ucap` jalan, `--daftar-mic` kosong | belum ada mic, atau izin Windows tertutup | Settings > Privacy & security > Microphone: nyalakan **"Microphone access"** DAN **"Let desktop apps access your microphone"**, lalu PowerShell baru |
+| mic jalan tapi kalimat ditolak | Whisper salah dengar | tempel baris `didengar :` - itu bahan memperbaiki tabel salah-dengar |
+
+---
+
+## Memasang ulang jalur suaranya saja
+
+Kalau Torang Stage sudah terpasang dan cuma bagian suaranya yang perlu diulang:
+
+```powershell
+cd $env:USERPROFILE\torang-stage\tools\voice
+.\PASANG-WHISPER.bat
+```
+
+`-CekSaja` melaporkan keadaan tanpa mengunduh apa pun.

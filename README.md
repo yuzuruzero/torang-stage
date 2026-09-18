@@ -42,6 +42,15 @@ teacher+student):
 
 ## Naik ke GitHub & instal di PC guru/murid
 
+**PC guru, satu perintah** (Node + repo + config + shortcut + ffmpeg + whisper.cpp):
+
+```powershell
+iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/tools/pasang-guru.ps1) }"
+```
+
+Rinciannya, termasuk PC guru yang sudah ada versi lama:
+**[PANDUAN-PASANG-VOICE-PC-GURU.md](PANDUAN-PASANG-VOICE-PC-GURU.md)**.
+
 Lihat **[PANDUAN-PASANG-MURID.md](PANDUAN-PASANG-MURID.md)**: sekali push oleh
 Hadi (`bash tools/push-ke-github.sh` dari WSL), lalu **dua installer sesuai
 peran mesin** (unduh zip repo — tanpa git di PC target):
