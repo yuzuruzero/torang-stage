@@ -26,6 +26,18 @@ type PanelStatus = {
 
 type AudioMsg = { stop?: boolean; fileUrl?: string; playAtEpoch?: number };
 
+/** Status jalur voice. Dikirim main lewat IPC `panel:voice`, dan status
+ *  TERAKHIR ikut di BootInfo supaya panel yang baru selesai memuat tidak
+ *  menampilkan "mati" padahal voice sudah siap sejak sebelum panel ada. */
+type VoiceStatus = {
+  keadaan: "mati" | "diam" | "merekam" | "memproses";
+  didengar?: string;
+  intent?: Record<string, unknown> | null;
+  alasan?: string;
+  ms?: number;
+  mirip?: { didengar: string; dipakai: string };
+};
+
 type BootInfo = {
   mode: string;
   endpoint_id: string;
@@ -34,6 +46,8 @@ type BootInfo = {
   version: string;
   isPanel: boolean;
   status?: PanelStatus;
+  voice?: VoiceStatus | null;
+  voice_tombol?: string | null;
   hotkeys?: { go: string; stop: string; replay: string } | null;
 };
 
@@ -45,6 +59,7 @@ interface TorangBridge {
   onAudio: (cb: (a: AudioMsg) => void) => void;
   onStatus: (cb: (s: PanelStatus) => void) => void;
   onState: (cb: (data: unknown) => void) => void;
+  onVoice: (cb: (s: VoiceStatus) => void) => void;
   sendEvent: (p: TvEvent) => void;
   sendIntent: (intent: unknown) => void;
 

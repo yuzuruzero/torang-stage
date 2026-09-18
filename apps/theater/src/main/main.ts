@@ -68,6 +68,9 @@ const pending = new Map<string, PendingCue>();
 /** Cache status terakhir — dikirim ulang saat renderer panel selesai boot
  *  (tanpa ini, status "online" yang datang sebelum listener terpasang hilang). */
 const statusCache: Record<string, unknown> = {};
+/** Alasan yang sama untuk voice: `mulai()` melapor "diam" SEBELUM renderer
+ *  panel selesai memuat, jadi pesan pertamanya selalu hilang. */
+let statusVoice: StatusVoice | null = null;
 
 function panelStatus(partial: Record<string, unknown>): void {
   Object.assign(statusCache, partial);
@@ -246,6 +249,8 @@ ipcMain.handle("boot", (event) => {
     version: VERSION,
     isPanel,
     status: statusCache,
+    voice: statusVoice,
+    voice_tombol: cfg.voice.enabled ? cfg.voice.tombol : null,
     hotkeys: cfg.hotkeys
       ? { go: "Ctrl+Alt+F9", stop: "Ctrl+Alt+F10", replay: "Ctrl+Alt+F11" }
       : null,
@@ -400,6 +405,12 @@ app.whenReady().then(() => {
   // dari suara langsung ke cue.
   if (cfg.voice.enabled) {
     voice = new Voice(cfg.voice, APP_ROOT, sendIntent, (s: StatusVoice) => {
+      // Hasil (didengar/intent/alasan) TIDAK ditimpa oleh laporan keadaan
+      // berikutnya: tiap ucapan berakhir dengan "diam", dan kalau hasilnya
+      // ikut terhapus, kalimat yang ditolak lenyap sebelum sempat dibaca.
+      statusVoice = s.didengar || s.alasan || s.intent
+        ? s
+        : { ...(statusVoice ?? {}), keadaan: s.keadaan };
       wins?.panel.webContents.send("panel:voice", s);
       if (s.intent) console.log(`[voice] "${s.didengar}" -> ${JSON.stringify(s.intent)} (${s.ms ?? "?"} ms)`);
       else if (s.alasan) console.log(`[voice] "${s.didengar ?? ""}" DITOLAK: ${s.alasan}`);
@@ -407,7 +418,11 @@ app.whenReady().then(() => {
     const hasil = voice.mulai(cfg.cloud_api);
     console.log(`[theater] ${hasil.ok ? "voice AKTIF" : "voice TIDAK aktif"}: ${hasil.pesan}`);
     panelStatus({ note: hasil.ok ? `🎤 ${hasil.pesan}` : `⚠ voice: ${hasil.pesan}` });
-    if (!hasil.ok) voice = null;
+    if (!hasil.ok) {
+      voice = null;
+      statusVoice = { keadaan: "mati", alasan: hasil.pesan };
+      wins?.panel.webContents.send("panel:voice", statusVoice);
+    }
   }
 
   // Umpan state live ke panel operator (murid online, binding, show-state).

@@ -22,11 +22,85 @@ function applyStatus(s: PanelStatus): void {
 
 window.torang.onStatus(applyStatus);
 
+// ---------------------------------------------------------------------------
+// Indikator voice
+//
+// Guru menghadap murid, bukan monitor. Yang harus terbaca sekilas cuma satu
+// hal: apakah mesin sedang mendengarkan. Sisanya - apa yang terdengar, jadi
+// intent apa, kenapa ditolak - dibaca saat ada yang aneh, jadi boleh kecil.
+//
+// Satu aturan yang menentukan bentuknya: HASIL TIDAK BOLEH HILANG. Tiap ucapan
+// berakhir dengan laporan "diam", dan kalau blok hasil ikut dikosongkan, kalimat
+// yang ditolak lenyap sebelum sempat dibaca - persis kejadian yang paling perlu
+// dilihat guru. Jadi keadaan dan hasil dirawat terpisah.
+// ---------------------------------------------------------------------------
+const KATA_KEADAAN: Record<VoiceStatus["keadaan"], string> = {
+  mati: "VOICE MATI",
+  diam: "SIAP MENDENGAR",
+  merekam: "MEREKAM...",
+  memproses: "memproses...",
+};
+
+const riwayat: string[] = [];
+
+function terapkanVoice(v: VoiceStatus): void {
+  const pill = $("#vpill");
+  pill.className = `vpill ${v.keadaan}`;
+  pill.textContent = KATA_KEADAAN[v.keadaan] ?? v.keadaan;
+
+  const adaHasil = Boolean(v.didengar || v.alasan || v.intent);
+  if (!adaHasil) return; // laporan keadaan saja - jangan hapus hasil sebelumnya
+
+  const dengar = $("#vdengar");
+  if (v.didengar) {
+    dengar.className = "";
+    dengar.textContent = "";
+    const q = document.createElement("span");
+    q.className = "kutip";
+    q.textContent = `\u201c${v.didengar}\u201d`; // teks dari whisper - JANGAN lewat innerHTML
+    dengar.appendChild(q);
+  }
+
+  const hasil = $("#vhasil");
+  hasil.textContent = "";
+  const baris = document.createElement("span");
+  if (v.intent) {
+    baris.className = "ok";
+    const i = v.intent as Record<string, unknown>;
+    const bagian = [i.intent, i.alias, i.target, i.to].filter(Boolean).join(" \u00b7 ");
+    baris.textContent = `\u2713 ${bagian}${v.ms ? `  (${v.ms} ms)` : ""}`;
+  } else if (v.alasan) {
+    baris.className = "tolak";
+    baris.textContent = `\u2715 ditolak: ${v.alasan}`;
+  }
+  hasil.appendChild(baris);
+
+  // Pencocokan samar nama modul SELALU ditampilkan. Kalau mesin menebak nama
+  // yang mirip, guru harus bisa melihat tebakannya - bukan menemukannya nanti
+  // lewat video yang salah tayang.
+  const mirip = $("#vmirip");
+  mirip.textContent = v.mirip
+    ? `\u26a0 dengar \u201c${v.mirip.didengar}\u201d \u2192 dipakai \u201c${v.mirip.dipakai}\u201d`
+    : "";
+
+  if (v.didengar || v.alasan) {
+    riwayat.unshift(
+      `${v.intent ? '<span class="r-ok">\u2713</span>' : '<span class="r-tolak">\u2715</span>'} ${esc(v.didengar ?? "(kosong)")}`
+    );
+    riwayat.length = Math.min(riwayat.length, 5);
+    $("#vriwayat").innerHTML = riwayat.join("<br>");
+  }
+}
+
+window.torang.onVoice(terapkanVoice);
+
 void window.torang.boot().then((b) => {
   $("#ep").textContent = b.endpoint_id;
   $("#ver").textContent = b.version;
   $("#panelurl").textContent = `${b.cloud_api}/panel`;
   if (b.status) applyStatus(b.status);
+  if (b.voice) terapkanVoice(b.voice);
+  $("#vtombol").textContent = b.voice_tombol ? `\u00b7 tekan ${b.voice_tombol} untuk bicara` : "";
   const hk = b.hotkeys;
   $("#hkGo").textContent = hk ? hk.go : "(hotkey off)";
   $("#hkUlang").textContent = hk ? hk.replay : "";

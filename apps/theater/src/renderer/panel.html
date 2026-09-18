@@ -24,6 +24,21 @@
   #note { color:#ffd97d; min-height:1.3em; }
   code { color:#9fe; font-size:12px; }
   kbd { background:#0d1122; border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12px; }
+  /* --- indikator voice: harus terbaca dari jarak guru-ke-layar --- */
+  .vpill { display:inline-block; border-radius:999px; padding:6px 16px; font-size:18px; font-weight:700; letter-spacing:.04em; border:1px solid transparent; }
+  .vpill.mati { background:#232a4d; color:#7580b3; border-color:#2c3564; }
+  .vpill.diam { background:#14331f; color:#43d17c; border-color:#1f6b3d; }
+  .vpill.merekam { background:#3d1414; color:#ff6a58; border-color:#8a2d2d; animation:vdenyut 1s ease-in-out infinite; }
+  .vpill.memproses { background:#3a3112; color:#ffd97d; border-color:#8a742d; }
+  @keyframes vdenyut { 0%,100% { opacity:1 } 50% { opacity:.45 } }
+  #vdengar { font-size:17px; margin-top:8px; min-height:1.4em; }
+  #vdengar .kutip { color:#e8ebff; }
+  #vhasil { margin-top:4px; font-size:14px; min-height:1.4em; }
+  #vhasil .ok { color:#43d17c; }
+  #vhasil .tolak { color:#ff8d7d; }
+  #vmirip { margin-top:4px; font-size:13px; color:#ffd97d; }
+  #vriwayat { margin-top:10px; font-size:12px; color:#7580b3; line-height:1.7; }
+  #vriwayat .r-ok { color:#43d17c; } #vriwayat .r-tolak { color:#ff8d7d; }
 </style>
 </head>
 <body>
@@ -69,6 +84,16 @@
       <button onclick="intent({intent:'GLOW', target:'all_student', preset:'pulse', duration_ms:4000})">✨ Glow semua</button>
     </div>
     <div class="muted">Rundown lengkap + status ACK: buka <code id="panelurl">—</code> di browser.</div>
+  </div>
+
+  <div class="card">
+    <h2>Voice command</h2>
+    <div><span id="vpill" class="vpill mati">VOICE MATI</span>
+      <span class="muted" id="vtombol"></span></div>
+    <div id="vdengar" class="muted">belum ada ucapan.</div>
+    <div id="vhasil"></div>
+    <div id="vmirip"></div>
+    <div id="vriwayat"></div>
   </div>
 
   <div class="card">
