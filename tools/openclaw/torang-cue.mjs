@@ -68,7 +68,16 @@ export function bacaTarget(tokens) {
     }
     return null;
   }
-  if (tokens[0] === "tv") {
+  // "tv tiga" DAN "layar tiga" menunjuk sasaran yang sama.
+  //
+  // "layar" ditambahkan 18 Sep 2026 setelah uji suara pertama: Whisper base
+  // berulang kali gagal pada "TV" - singkatan dua huruf yang diucapkan
+  // "ti-vi", terdengar jadi "tifi", dan sekali malah menempel dengan kata
+  // sebelumnya jadi satu token ("di TV tiga" -> "difitiga"). "layar" kata
+  // Indonesia utuh, jauh lebih kokoh buat mesin maupun buat telinga murid di
+  // ruang berisik. Dua-duanya diterima; kartu operator baru diubah setelah
+  // ada angka yang membandingkan keduanya.
+  if (tokens[0] === "tv" || tokens[0] === "layar") {
     const n = bacaAngka(tokens.slice(1));
     if (n && n[0] >= 1 && n[0] <= 4) return [`tv${n[0]}`, 1 + n[1]];
     return null;
@@ -117,6 +126,44 @@ export function parseKalimat(kalimat, vocab) {
     return { ok: true, intent: { intent: "SAPA", target: target[0] } };
   }
 
+  if (aksi === "buka") {
+    // "buka office di TV tiga" / "buka layar TV empat" (pemulihan jendela).
+    let t = sisa;
+    // "buka lagi TV empat" / "buka window TV empat" → pemulihan jendela.
+    if (t[0] === "lagi" || t[0] === "window" || t[0] === "jendela" || t[0] === "layar") {
+      const t2 = t[0] === "lagi" && (t[1] === "window" || t[1] === "jendela" || t[1] === "layar")
+        ? t.slice(2)
+        : t.slice(1);
+      const target = bacaTarget(t2[0] === "ke" ? t2.slice(1) : t2);
+      if (!target || !(target[0].startsWith("tv") || target[0] === "all_tv")) {
+        return { ok: false, error: 'buka window TV berapa? (contoh: "buka window TV empat")' };
+      }
+      return { ok: true, intent: { intent: "REOPEN_WINDOW", target: target[0] } };
+    }
+    // Selain itu: buka scene bernama, mis. "buka office di TV tiga".
+    const posDi = t.lastIndexOf("di");
+    if (posDi < 1) {
+      return { ok: false, error: 'format: "buka office di <target TV>"' };
+    }
+    const scene = t.slice(0, posDi).join("-");
+    if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(scene)) {
+      return { ok: false, error: `nama scene tidak sah: "${scene}"` };
+    }
+    const target = bacaTarget(t.slice(posDi + 1));
+    if (!target || !(target[0].startsWith("tv") || target[0] === "all_tv")) {
+      return { ok: false, error: "scene hanya untuk TV (tv1..tv4 atau semua layar)" };
+    }
+    return { ok: true, intent: { intent: "OPEN_SCENE", scene, target: target[0] } };
+  }
+
+  if (aksi === "tutup") {
+    const target = bacaTarget(sisa);
+    if (!target || !(target[0].startsWith("tv") || target[0] === "all_tv")) {
+      return { ok: false, error: 'tutup layar mana? (contoh: "tutup TV tiga")' };
+    }
+    return { ok: true, intent: { intent: "CLOSE_SCENE", target: target[0] } };
+  }
+
   if (aksi === "glow") {
     // EKSTENSI di luar 8 kata §5 (glow resmi = efek otomatis W1); praktis utk uji.
     const target = bacaTarget(sisa) ?? ["all_student", 0];
@@ -150,13 +197,9 @@ export function parseKalimat(kalimat, vocab) {
     };
   }
 
-  if (aksi === "buka") {
-    return { ok: false, error: "\"buka\" (pixel office/scene) belum tersedia — fase 2" };
-  }
-
   return {
     ok: false,
-    error: `aksi tidak dikenal: "${aksi}". Kosakata: puter, pindah, lanjut, ulang, stop, sapa, glow`,
+    error: `aksi tidak dikenal: "${aksi}". Kosakata: puter, pindah, buka, tutup, lanjut, ulang, stop, sapa, glow`,
   };
 }
 

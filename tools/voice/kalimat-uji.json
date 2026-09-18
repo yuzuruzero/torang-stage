@@ -1,0 +1,52 @@
+{
+  "catatan": [
+    "Kebenaran acuan untuk uji tahap A. 'intent' = hasil parseKalimat yang BENAR.",
+    "intent null = kalimat ini HARUS ditolak parser. Itu bagian dari ujian:",
+    "grammar tertutup yang menerima kalimat di luar daftar sama bahayanya",
+    "dengan grammar yang menolak kalimat yang sah.",
+    "Kalimat disusun dari KALIMAT-BAKU-VOICE.md.",
+    "18 Sep 2026: Hadi memutuskan \"TV\" TETAP bentuk resmi di kartu operator,",
+    "karena sudah dikenal guru dan murid. Jadi mayoritas kalimat di sini memakai",
+    "\"TV\" - itu yang benar-benar akan diucapkan. C1-C3 memakai \"layar\" sebagai",
+    "kontrol pembanding, sebab Whisper base sempat gagal dua kali pada \"TV\"",
+    "(tifi, difitiga) tapi benar pada \"layar\". Selisih keduanya diukur di sini."
+  ],
+  "kalimat": [
+    { "inti": true, "id": "01", "ucap": "Torang, puter modul tes di TV satu",        "intent": { "intent": "PLAY_MODULE", "alias": "modul tes", "target": "tv1" } },
+    { "id": "02", "ucap": "Torang, puter modul tes di TV dua",         "intent": { "intent": "PLAY_MODULE", "alias": "modul tes", "target": "tv2" } },
+    { "id": "03", "ucap": "Torang, puter modul tes di TV tiga",        "intent": { "intent": "PLAY_MODULE", "alias": "modul tes", "target": "tv3" } },
+    { "id": "04", "ucap": "Torang, puter modul tes di TV empat",       "intent": { "intent": "PLAY_MODULE", "alias": "modul tes", "target": "tv4" } },
+
+    { "id": "05", "ucap": "Torang, pindah ke TV satu",                 "intent": { "intent": "MOVE", "to": "tv1" } },
+    { "id": "06", "ucap": "Torang, pindah ke TV dua",                  "intent": { "intent": "MOVE", "to": "tv2" } },
+    { "inti": true, "id": "07", "ucap": "Torang, pindah ke TV tiga",                 "intent": { "intent": "MOVE", "to": "tv3" } },
+    { "id": "08", "ucap": "Torang, pindah ke TV empat",                "intent": { "intent": "MOVE", "to": "tv4" } },
+
+    { "id": "09", "ucap": "Torang, sapa komp satu",                    "intent": { "intent": "SAPA", "target": "komp1" } },
+    { "id": "10", "ucap": "Torang, sapa komp lima",                    "intent": { "intent": "SAPA", "target": "komp5" } },
+    { "id": "11", "ucap": "Torang, sapa komp sembilan",                "intent": { "intent": "SAPA", "target": "komp9" } },
+    { "id": "12", "ucap": "Torang, sapa komp dua belas",               "intent": { "intent": "SAPA", "target": "komp12" } },
+    { "id": "13", "ucap": "Torang, sapa komp enam belas",              "intent": { "intent": "SAPA", "target": "komp16" } },
+    { "id": "14", "ucap": "Torang, sapa komp dua puluh",               "intent": { "intent": "SAPA", "target": "komp20" } },
+
+    { "id": "15", "ucap": "Torang, lanjut",                            "intent": { "intent": "GO" } },
+    { "id": "16", "ucap": "Torang, ulang",                             "intent": { "intent": "REPLAY" } },
+    { "id": "17", "ucap": "Torang, stop",                              "intent": { "intent": "STOP" } },
+
+    { "id": "18", "ucap": "Torang, buka office di TV tiga",            "intent": { "intent": "OPEN_SCENE", "scene": "office", "target": "tv3" } },
+    { "inti": true, "id": "19", "ucap": "Torang, tutup TV tiga",                     "intent": { "intent": "CLOSE_SCENE", "target": "tv3" } },
+    { "id": "20", "ucap": "Torang, buka window TV empat",              "intent": { "intent": "REOPEN_WINDOW", "target": "tv4" } },
+
+    { "id": "21", "ucap": "Torang, glow semua komp",                   "intent": { "intent": "GLOW", "target": "all_student", "preset": "pulse", "duration_ms": 4000 } },
+    { "id": "22", "ucap": "Torang, puter modul tes di semua layar",    "intent": { "intent": "PLAY_MODULE", "alias": "modul tes", "target": "all_tv" } },
+
+    { "inti": true, "id": "C1", "ucap": "Torang, puter modul tes di layar satu",    "intent": { "intent": "PLAY_MODULE", "alias": "modul tes", "target": "tv1" }, "kenapa": "kontrol: bentuk layar, dibandingkan dengan 01 yang memakai TV" },
+    { "id": "C2", "ucap": "Torang, pindah ke layar dua",               "intent": { "intent": "MOVE", "to": "tv2" }, "kenapa": "kontrol: bentuk layar, dibandingkan dengan 06" },
+    { "id": "C3", "ucap": "Torang, tutup layar tiga",                  "intent": { "intent": "CLOSE_SCENE", "target": "tv3" }, "kenapa": "kontrol: bentuk layar, dibandingkan dengan 19" },
+
+    { "inti": true, "id": "T1", "ucap": "Torang, tolong sapa komputer enam",         "intent": null, "kenapa": "\"tolong\" bukan kosakata aksi — grammar tertutup harus menolak" },
+    { "inti": true, "id": "T2", "ucap": "Torang, matikan semua TV",                  "intent": null, "kenapa": "\"matikan\" tidak ada di kosakata" },
+    { "inti": true, "id": "T3", "ucap": "Torang, pindah ke komp tujuh",              "intent": null, "kenapa": "pindah hanya antar TV — nyelem ke komp fase 2" },
+    { "inti": true, "id": "T4", "ucap": "Torang, puter modul tes di TV lima",        "intent": null, "kenapa": "TV cuma satu sampai empat" }
+  ]
+}

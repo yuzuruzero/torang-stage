@@ -23,3 +23,6 @@ torang-theater.config.json
 # artefak pengiriman/lokal di folder kerja Hadi
 /*.zip
 _to_delete/
+
+# catatan pribadi editor (Obsidian) — bukan bagian proyek
+.obsidian/

@@ -1,0 +1,87 @@
+/**
+ * Test lapisan normalisasi transkrip Whisper.
+ *
+ * Yang dijaga di sini bukan "apakah kalimat bagus bisa lolos" - itu bagian
+ * mudahnya. Yang dijaga adalah bahwa lapisan ini TIDAK pernah mengubah kalimat
+ * di luar kosakata menjadi perintah yang sah. Sekali itu bisa terjadi,
+ * disiplin grammar tertutup bocor lewat pintu belakang.
+ */
+import { describe, expect, it } from "vitest";
+// @ts-expect-error - modul JS polos, tanpa tipe
+import { rapikanTranskrip, PETA_KATA, BUKAN_PEMANGGIL } from "./normalisasi-stt.mjs";
+// @ts-expect-error - modul JS polos, tanpa tipe
+import { parseKalimat } from "../openclaw/torang-cue.mjs";
+
+/** Jalankan jalur penuh: transkrip Whisper -> normalisasi -> parser. */
+function jalur(transkrip: string) {
+  const rapi = rapikanTranskrip(transkrip);
+  if (!rapi.ok) return { ok: false as const, error: rapi.alasanTolak };
+  return parseKalimat(rapi.teks);
+}
+
+describe("salah-dengar yang TERBUKTI terjadi di rekaman sungguhan", () => {
+  // 18 Sep 2026, rekaman Hadi: Whisper menulis "Perang" untuk "Torang"
+  // dan "tifi" untuk "TV".
+  it("\"Perang\" + \"tifi\" tetap menghasilkan intent yang benar", () => {
+    expect(jalur("Perang, putar modul tes di tifi tiga.")).toEqual({
+      ok: true,
+      intent: { intent: "PLAY_MODULE", alias: "modul tes", target: "tv3" },
+    });
+    expect(jalur("Perang, pindah ke tifi empat.")).toEqual({
+      ok: true,
+      intent: { intent: "MOVE", to: "tv4" },
+    });
+  });
+});
+
+describe("lapisan ini tidak boleh menciptakan perintah", () => {
+  it("kata sopan di depan perintah sah TETAP ditolak", () => {
+    // Kalau "tolong" pernah dipetakan jadi pemanggil, ia akan dibuang parser
+    // dan kalimat improvisasi ini berubah jadi perintah sah.
+    expect(jalur("Torang, tolong sapa komputer enam").ok).toBe(false);
+    expect(jalur("Perang, tolong sapa komp enam").ok).toBe(false);
+    expect(jalur("Torang, coba periksa keadaan panggung").ok).toBe(false);
+  });
+
+  it("tidak ada kata di BUKAN_PEMANGGIL yang dipetakan ke pemanggil", () => {
+    for (const kata of BUKAN_PEMANGGIL) {
+      expect(PETA_KATA.get(kata)).not.toBe("torang");
+    }
+  });
+
+  it("petaTambahan pun tidak boleh menyelundupkan pemetaan terlarang", () => {
+    expect(() =>
+      rapikanTranskrip("tolong sapa komp lima", new Map([["tolong", "torang"]]))
+    ).toThrow(/BUKAN_PEMANGGIL/);
+  });
+
+  it("kalimat yang aksinya di luar kosakata tetap ditolak", () => {
+    expect(jalur("Torang, matikan semua TV").ok).toBe(false);
+    expect(jalur("Torang, puter modul tes di TV lima").ok).toBe(false);
+    expect(jalur("Torang, pindah ke komp tujuh").ok).toBe(false);
+  });
+});
+
+describe("halusinasi Whisper", () => {
+  it("ditolak, tidak diteruskan ke parser", () => {
+    for (const frasa of [
+      "Terima kasih telah menonton.",
+      "Jangan lupa like dan subscribe!",
+      "[BLANK_AUDIO]",
+      "   ",
+    ]) {
+      expect(jalur(frasa).ok).toBe(false);
+    }
+  });
+});
+
+describe("perubahan dilaporkan supaya bisa diaudit", () => {
+  it("tiap penggantian dicatat", () => {
+    const r = rapikanTranskrip("Perang, putar di tifi tiga");
+    expect(r.ok).toBe(true);
+    const ubah = r.perubahan.map((p: { dari: string; jadi: string }) => `${p.dari}>${p.jadi}`);
+    expect(ubah).toContain("perang>torang");
+    expect(ubah).toContain("putar>puter");
+    expect(ubah).toContain("tifi>tv");
+  });
+});

@@ -1,0 +1,80 @@
+DAFTAR KALIMAT UNTUK DIREKAM - Panggung Torang, uji STT
+================================================================
+
+CARA MEREKAM
+  - jeda DIAM minimal 1 detik di antara tiap kalimat
+  - jangan berdehem atau menghela napas keras di jeda itu
+  - ucapkan tiap kalimat mengalir, jangan berhenti di tengah
+  - ucapkan seperti di kelas: jarak normal, kecepatan normal,
+    dan BIARKAN berisiknya ada (AC, kipas, orang lewat)
+  - urutannya harus persis seperti di bawah
+
+Kalau salah ucap: diam sebentar, lalu ulangi kalimat itu dari awal,
+dan catat nomornya. Lebih mudah membuang satu potongan daripada
+menebak-nebak nanti.
+
+----------------------------------------------------------------
+PAKET INTI - 8 kalimat, sekitar 1 menit
+Ini saja sudah menjawab dua pertanyaan yang menentukan sekarang.
+----------------------------------------------------------------
+
+  1. [01]  "Torang, puter modul tes di TV satu"
+
+  2. [07]  "Torang, pindah ke TV tiga"
+
+  3. [19]  "Torang, tutup TV tiga"
+
+  4. [C1]  "Torang, puter modul tes di layar satu"
+
+  5. [T1]  "Torang, tolong sapa komputer enam"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+
+  6. [T2]  "Torang, matikan semua TV"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+
+  7. [T3]  "Torang, pindah ke komp tujuh"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+
+  8. [T4]  "Torang, puter modul tes di TV lima"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+
+----------------------------------------------------------------
+PAKET PENUH - 29 kalimat, sekitar 4 menit
+Untuk angka ketepatan yang bisa dibawa ke rapat. Rekam ini di PC
+guru dengan mic kelas, bukan di sini - di sinilah angkanya berarti.
+----------------------------------------------------------------
+
+   1. [01]  "Torang, puter modul tes di TV satu"
+   2. [02]  "Torang, puter modul tes di TV dua"
+   3. [03]  "Torang, puter modul tes di TV tiga"
+   4. [04]  "Torang, puter modul tes di TV empat"
+   5. [05]  "Torang, pindah ke TV satu"
+   6. [06]  "Torang, pindah ke TV dua"
+   7. [07]  "Torang, pindah ke TV tiga"
+   8. [08]  "Torang, pindah ke TV empat"
+   9. [09]  "Torang, sapa komp satu"
+  10. [10]  "Torang, sapa komp lima"
+  11. [11]  "Torang, sapa komp sembilan"
+  12. [12]  "Torang, sapa komp dua belas"
+  13. [13]  "Torang, sapa komp enam belas"
+  14. [14]  "Torang, sapa komp dua puluh"
+  15. [15]  "Torang, lanjut"
+  16. [16]  "Torang, ulang"
+  17. [17]  "Torang, stop"
+  18. [18]  "Torang, buka office di TV tiga"
+  19. [19]  "Torang, tutup TV tiga"
+  20. [20]  "Torang, buka window TV empat"
+  21. [21]  "Torang, glow semua komp"
+  22. [22]  "Torang, puter modul tes di semua layar"
+  23. [C1]  "Torang, puter modul tes di layar satu"
+  24. [C2]  "Torang, pindah ke layar dua"
+  25. [C3]  "Torang, tutup layar tiga"
+  26. [T1]  "Torang, tolong sapa komputer enam"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+  27. [T2]  "Torang, matikan semua TV"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+  28. [T3]  "Torang, pindah ke komp tujuh"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+  29. [T4]  "Torang, puter modul tes di TV lima"
+        (kalimat ini SENGAJA salah - ucapkan apa adanya)
+

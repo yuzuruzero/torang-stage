@@ -1,0 +1,21 @@
+# Binary & model diunduh oleh pasang-whisper.ps1 — jangan masuk git (ratusan MB).
+bin/
+model/
+
+# Rekaman suara guru: data pribadi, dan besar. Tinggal di mesin uji saja.
+rekaman/
+
+# Laporan hasil uji sungguhan. contoh-laporan.md (mode palsu) TETAP di-commit
+# supaya orang tahu bentuk keluarannya tanpa harus menjalankan apa pun.
+laporan-uji-*.md
+
+# rekaman mentah dari HP sebelum dipotong - besar, dan suara pribadi
+rekaman-mentah/
+*.mp4
+*.m4a
+
+# berkas sementara yang dibuat coba-satu.ps1
+_coba-satu.mjs
+
+# rekaman dari pemakaian sungguhan di kelas - suara orang, jangan masuk git
+rekaman-lapangan/

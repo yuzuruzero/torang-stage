@@ -1,0 +1,52 @@
+# Grammar GBNF untuk whisper.cpp - membatasi APA YANG BOLEH DIDENGAR mesin.
+#
+# Ini gagasan yang seharusnya dipakai sejak awal. Selama ini Whisper dibiarkan
+# menuliskan apa saja, lalu hasilnya ditambal tabel salah-dengar ("tifi" -> "tv")
+# dan diadili parser. Pendekatan itu kalah telak pada kasus seperti "difitiga",
+# karena kerusakannya terjadi SEBELUM kata terbentuk.
+#
+# Dengan grammar, pencarian kata Whisper dibatasi pada kalimat yang memang sah.
+# "difitiga" tidak akan pernah muncul - bukan karena ditambal, tapi karena
+# bukan kalimat yang boleh dihasilkan.
+#
+# Simetri yang enak: parser sudah bergrammar tertutup (HUKUM pasal 5). Sekarang
+# DECODER-nya bergrammar tertutup juga, dari grammar yang sama.
+#
+# PENTING - whisper.cpp hanya mengaktifkan grammar kalau DUA argumen diberikan:
+#     --grammar torang.gbnf --grammar-rule root
+# Kalau --grammar-rule lupa, grammar DILEWATI DIAM-DIAM. Skrip di folder ini
+# memeriksa stderr untuk memastikan ia benar-benar aktif.
+#
+# Whisper mengawali keluaran dengan satu spasi, jadi root ikut menyertakannya.
+
+root        ::= " " pemanggil ", " perintah "."
+
+pemanggil   ::= "Torang"
+
+perintah    ::= p-puter | p-pindah | p-buka | p-tutup | p-sapa | p-glow | p-tunggal
+
+p-tunggal   ::= "lanjut" | "ulang" | "stop"
+p-puter     ::= "puter " modul " di " sasaran
+p-pindah    ::= "pindah ke " layar
+p-buka      ::= "buka " scene " di " layar | "buka window " layar
+p-tutup     ::= "tutup " layar
+p-sapa      ::= "sapa " komp
+p-glow      ::= "glow " ("semua komp" | komp)
+
+sasaran     ::= layar | komp | "semua layar" | "semua komp"
+
+layar       ::= ("TV " | "layar ") angka4
+komp        ::= ("komp " | "komputer ") angka20
+
+# Nama modul dan scene: untuk sekarang dari manifest yang dipakai saat uji.
+# Nanti berkas ini dihasilkan ulang otomatis dari /api/vocab tiap manifest
+# berubah - kalau tidak, modul baru tidak akan pernah bisa diucapkan.
+modul       ::= "tes"
+scene       ::= "office"
+
+angka4      ::= "satu" | "dua" | "tiga" | "empat"
+
+angka20     ::= "satu" | "dua" | "tiga" | "empat" | "lima" | "enam" | "tujuh" |
+                "delapan" | "sembilan" | "sepuluh" | "sebelas" | "dua belas" |
+                "tiga belas" | "empat belas" | "lima belas" | "enam belas" |
+                "tujuh belas" | "delapan belas" | "sembilan belas" | "dua puluh"
