@@ -15,6 +15,10 @@ export interface VoiceConfig {
   threads: number;
   /** Kosong = pakai perangkat rekam pertama yang terbaca. */
   mic: string;
+  /** Tombol "ya, benar" untuk membenarkan usulan kalimat. Sengaja beda dari
+   *  tombol PTT: satu tombol berarti guru bisa menjalankan usulan tanpa
+   *  bermaksud, cuma karena ingin mengulang ucapannya. */
+  tombol_ya: string;
   /** Uji tanpa mic: tombol PTT memutar berkas ini lewat rantai yang sama.
    *  Kosongkan untuk pemakaian sungguhan. */
   berkas_uji: string;
@@ -88,6 +92,7 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
       denda_grammar: 100,
       threads: 8,
       mic: "",
+      tombol_ya: "F9",
       berkas_uji: "",
     },
   };

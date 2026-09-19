@@ -37,8 +37,22 @@
   #vhasil .ok { color:#43d17c; }
   #vhasil .tolak { color:#ff8d7d; }
   #vmirip { margin-top:4px; font-size:13px; color:#ffd97d; }
+  #vsaran { margin-top:8px; font-size:16px; display:none; background:#2a2412; border:1px solid #8a742d; border-radius:8px; padding:8px 12px; }
+  #vsaran.tampil { display:block; }
+  #vsaran b { color:#ffd97d; }
+  #vsaran .tekan { color:#9fa8d8; font-size:13px; }
   #vriwayat { margin-top:10px; font-size:12px; color:#7580b3; line-height:1.7; }
   #vriwayat .r-ok { color:#43d17c; } #vriwayat .r-tolak { color:#ff8d7d; }
+  /* --- daftar video jadi modul --- */
+  #lepas { border:2px dashed var(--line); border-radius:10px; padding:16px; text-align:center; color:#7580b3; font-size:14px; transition:.15s; }
+  #lepas.hover { border-color:#43d17c; background:#14331f; color:#a9f5c6; }
+  .vb-baris { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#141a36; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-top:8px; }
+  .vb-nama { flex:1 1 220px; font-size:13px; word-break:break-all; }
+  .vb-baris input { background:#0d1122; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:13px; width:150px; }
+  .vb-baris button { margin:0; padding:6px 12px; font-size:13px; }
+  .vb-dur { color:#7580b3; font-size:12px; }
+  .vb-galat { color:#ff8d7d; font-size:12px; flex-basis:100%; }
+  .vb-ok { color:#43d17c; font-size:13px; }
 </style>
 </head>
 <body>
@@ -93,7 +107,18 @@
     <div id="vdengar" class="muted">belum ada ucapan.</div>
     <div id="vhasil"></div>
     <div id="vmirip"></div>
+    <div id="vsaran"></div>
     <div id="vriwayat"></div>
+  </div>
+
+  <div class="card">
+    <h2>Video baru &rarr; modul</h2>
+    <div id="lepas">Seret berkas video ke sini &mdash; atau taruh di folder <code>video-baru\</code> lalu klik Muat ulang</div>
+    <div id="vbDaftar"></div>
+    <div style="margin-top:8px">
+      <button onclick="muatInbox()" style="padding:6px 10px; font-size:12px">&#8635; Muat ulang folder video-baru</button>
+      <span class="muted" id="vbFolder"></span>
+    </div>
   </div>
 
   <div class="card">

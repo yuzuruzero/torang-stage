@@ -42,6 +42,7 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 // bagian yang menentukan apa yang boleh dieksekusi.
 import { parseKalimat, type HasilParse } from "../../../../tools/openclaw/parser.mjs";
 import { rapikanTranskrip } from "../../../../tools/voice/normalisasi-stt.mjs";
+import { cariSaran } from "../../../../tools/openclaw/saran.mjs";
 
 export interface VoiceConfig {
   enabled: boolean;
@@ -57,6 +58,15 @@ export interface VoiceConfig {
   threads: number;
   /** Nama perangkat mic (ffmpeg dshow). Kosong = pakai yang pertama terbaca. */
   mic: string;
+  /**
+   * Tombol "ya, benar" untuk membenarkan usulan kalimat.
+   *
+   * SENGAJA BUKAN tombol PTT yang sama. Kalau tombolnya satu, guru yang cuma
+   * ingin mengulang ucapannya akan menjalankan usulan tanpa bermaksud - dan
+   * video yang salah tayang di depan kelas jauh lebih buruk daripada satu
+   * tombol tambahan. Clicker presentasi umumnya punya dua tombol.
+   */
+  tombol_ya: string;
   /**
    * Uji tanpa mic: kalau diisi path berkas suara, tombol PTT MEMUTAR berkas
    * itu lewat rantai yang sama persis - whisper, normalisasi, parser, cue -
@@ -79,6 +89,8 @@ export interface StatusVoice {
   alasan?: string;
   ms?: number;
   mirip?: { didengar: string; dipakai: string };
+  /** Usulan kalimat setelah perintah ditolak - MENUNGGU dibenarkan guru. */
+  saran?: { kalimat: string } | null;
 }
 
 type Kirim = (intent: Record<string, unknown>) => Promise<void>;
@@ -105,6 +117,7 @@ export class Voice {
   private ffmpeg: string | null = null;
   private ffmpegUbah: string | null = null;
   private vocab: { aliases?: { alias: string }[] } | null = null;
+  private saranTertunda: { intent: Record<string, unknown>; kalimat: string; sampai: number } | null = null;
 
   constructor(cfg: VoiceConfig, appRoot: string, kirim: Kirim, lapor: Lapor) {
     this.cfg = cfg;
@@ -217,14 +230,24 @@ export class Voice {
       sumber = `mic: ${mic}`;
     }
     const terdaftar = globalShortcut.register(this.cfg.tombol, () => {
+      // Ucapan baru membatalkan usulan yang belum dijawab - kalau tidak, usulan
+      // lama bisa dibenarkan setelah guru sudah beralih ke perintah lain.
+      this.saranTertunda = null;
       if (modeBerkas) { void this.prosesBerkasUji(apiUrl); return; }
       if (this.rekaman) void this.hentikanDanProses(apiUrl);
       else this.mulaiRekam();
     });
     if (!terdaftar) return { ok: false, pesan: `tombol ${this.cfg.tombol} sudah dipakai app lain` };
 
+    const tombolYa = this.cfg.tombol_ya?.trim();
+    if (tombolYa) {
+      const ok = globalShortcut.register(tombolYa, () => { void this.benarkanSaran(); });
+      if (!ok) console.warn(`[voice] tombol ya "${tombolYa}" sudah dipakai app lain - usulan tidak bisa dibenarkan lewat tombol`);
+    }
+
     this.lapor({ keadaan: "diam" });
-    return { ok: true, pesan: `voice siap — ${this.cfg.tombol} (${this.cfg.mode}), ${sumber}` };
+    const ya = this.cfg.tombol_ya ? `, ${this.cfg.tombol_ya} = ya benar` : "";
+    return { ok: true, pesan: `voice siap — ${this.cfg.tombol} (${this.cfg.mode})${ya}, ${sumber}` };
   }
 
   private mulaiRekam() {
@@ -266,6 +289,42 @@ export class Voice {
       fs.rmSync(wav, { force: true });
       this.lapor({ keadaan: "diam" });
     }
+  }
+
+  /**
+   * Jalankan usulan yang sedang menunggu - HANYA kalau guru menekan tombol ya.
+   *
+   * Intent-nya sudah jadi sejak usulannya dibuat, dan dibuat oleh `parseKalimat`
+   * yang sama dengan jalur normal. Yang terjadi di sini cuma mengirimnya.
+   */
+  private async benarkanSaran() {
+    const s = this.saranTertunda;
+    this.saranTertunda = null;
+    if (!s) return;
+    if (Date.now() > s.sampai) {
+      this.lapor({ keadaan: "diam", alasan: "usulan sudah kedaluwarsa - ucapkan lagi", saran: null });
+      return;
+    }
+    this.lapor({ keadaan: "memproses", didengar: s.kalimat, intent: s.intent, saran: null });
+    this.catat({ jenis: "saran-dibenarkan", kalimat: s.kalimat, intent: s.intent });
+    await this.kirim(s.intent);
+    this.lapor({ keadaan: "diam" });
+  }
+
+  /**
+   * Catatan lapangan. Tiap penolakan ditulis apa adanya ke berkas, supaya
+   * keputusan berikutnya - perlu tidaknya korektor LLM - diambil dari kejadian
+   * sungguhan di kelas, bukan dari dugaan siapa pun.
+   */
+  private catat(baris: Record<string, unknown>) {
+    try {
+      const dir = path.join(this.dirVoice, "rekaman-lapangan");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(
+        path.join(dir, "catatan.jsonl"),
+        JSON.stringify({ waktu: new Date().toISOString(), ...baris }) + "\n"
+      );
+    } catch { /* catatan tidak boleh menggagalkan perintah */ }
   }
 
   private async hentikanDanProses(apiUrl: string | null) {
@@ -323,15 +382,28 @@ export class Voice {
       : { ok: false, error: rapi.alasanTolak ?? "transkrip ditolak" };
 
     if (!hasil.ok) {
-      this.lapor({ keadaan: "memproses", didengar: teks, intent: null, alasan: hasil.error, ms });
+      // Ditolak - tapi jangan tinggalkan guru tanpa jalan keluar. Kalau ada SATU
+      // kalimat sah yang jelas paling dekat, tawarkan; guru yang memutuskan.
+      const saran = rapi.ok ? cariSaran(rapi.teks, vocab) : null;
+      this.saranTertunda = saran
+        ? { intent: saran.intent, kalimat: saran.kalimat, sampai: Date.now() + 15000 }
+        : null;
+      this.lapor({
+        keadaan: "memproses", didengar: teks, intent: null, alasan: hasil.error, ms,
+        saran: saran ? { kalimat: saran.kalimat } : null,
+      });
+      this.catat({ jenis: "ditolak", didengar: teks, alasan: hasil.error, saran: saran?.kalimat ?? null });
       return;
     }
-    this.lapor({ keadaan: "memproses", didengar: teks, intent: hasil.intent, ms, mirip: hasil.mirip });
+    this.saranTertunda = null;
+    this.lapor({ keadaan: "memproses", didengar: teks, intent: hasil.intent, ms, mirip: hasil.mirip, saran: null });
+    this.catat({ jenis: "diterima", didengar: teks, intent: hasil.intent, ms });
     await this.kirim(hasil.intent);
   }
 
   berhenti() {
     try { globalShortcut.unregister(this.cfg.tombol); } catch { /* */ }
+    try { if (this.cfg.tombol_ya) globalShortcut.unregister(this.cfg.tombol_ya); } catch { /* */ }
     if (this.pewaktu) clearTimeout(this.pewaktu);
     try { this.rekaman?.kill(); } catch { /* */ }
     this.lapor({ keadaan: "mati" });

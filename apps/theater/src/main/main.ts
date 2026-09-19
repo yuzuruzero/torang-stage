@@ -11,6 +11,7 @@
 import { app, dialog, globalShortcut, ipcMain } from "electron";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { CueSchema, expandTargets, type Cue } from "@torang/shared";
 import { loadTheaterConfig, type TheaterConfig } from "./config.js";
 import { createTeacherWindows, type TeacherWindows, bukaUlangTv, tvYangDiharapkan } from "./windows.js";
@@ -251,10 +252,106 @@ ipcMain.handle("boot", (event) => {
     status: statusCache,
     voice: statusVoice,
     voice_tombol: cfg.voice.enabled ? cfg.voice.tombol : null,
+    voice_tombol_ya: cfg.voice.enabled ? cfg.voice.tombol_ya : null,
     hotkeys: cfg.hotkeys
       ? { go: "Ctrl+Alt+F9", stop: "Ctrl+Alt+F10", replay: "Ctrl+Alt+F11" }
       : null,
   };
+});
+
+// ---------------------------------------------------------------------------
+// Daftarkan video jadi modul, dari panel
+//
+// Pekerjaannya TIDAK ditulis ulang di sini. Semuanya diserahkan ke
+// tools/cli/torang-modul.mjs - alat yang sama yang dipakai Hermes dan
+// PowerShell, termasuk lima lapis pemeriksaan unduhan dan aturan penamaan.
+// Dua salinan aturan pendaftaran akan menyimpang diam-diam, dan yang menyimpang
+// adalah bagian yang memutuskan berkas apa yang boleh masuk folder aset.
+//
+// Panel ini cuma menghapus satu hal: keharusan guru membuka PowerShell.
+// ---------------------------------------------------------------------------
+const EKST_VIDEO = new Set([".mp4", ".webm", ".mov", ".mkv"]);
+
+/**
+ * Jalankan CLI modul memakai Node BAWAAN Electron (ELECTRON_RUN_AS_NODE), bukan
+ * `node` dari PATH. Di PC guru, PATH bisa saja belum menyertakan Node (baru
+ * dipasang, jendela belum dibuka ulang) - dan kegagalannya akan terbaca seperti
+ * "pendaftaran rusak", padahal cuma tidak ketemu juru bahasanya.
+ */
+function jalankanModul(args: string[]): { ok: boolean; pesan: string; data: Record<string, unknown> } {
+  const skrip = path.join(APP_ROOT, "..", "..", "tools", "cli", "torang-modul.mjs");
+  const r = spawnSync(process.execPath, [skrip, ...args, "--json"], {
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+    windowsHide: true,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+  });
+  if (r.error) return { ok: false, pesan: `tidak bisa menjalankan torang-modul: ${r.error.message}`, data: {} };
+  const mentah = (r.stdout ?? "").trim();
+  try {
+    const j = JSON.parse(mentah) as Record<string, unknown>;
+    return { ok: j.ok !== false, pesan: String(j.pesan ?? ""), data: j };
+  } catch {
+    // Keluaran bukan JSON berarti CLI berhenti sebelum sempat melapor rapi -
+    // tampilkan apa adanya, jangan dikarang jadi pesan yang lebih enak dibaca.
+    return { ok: false, pesan: (r.stderr ?? "").trim() || mentah || "torang-modul tidak memberi keluaran", data: {} };
+  }
+}
+
+/** Jalur yang boleh dikirim ke CLI: berkas video yang benar-benar ada. */
+function jalurVideoSah(jalur: unknown): string | null {
+  if (typeof jalur !== "string" || !jalur.trim()) return null;
+  const abs = path.resolve(jalur);
+  if (!EKST_VIDEO.has(path.extname(abs).toLowerCase())) return null;
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return null;
+  return abs;
+}
+
+ipcMain.handle("modul:inbox", () => {
+  const daftar = jalankanModul(["inbox"]);
+  const folder = String(daftar.data.folder ?? "");
+  const berkas = Array.isArray(daftar.data.video) ? (daftar.data.video as string[]) : [];
+  // Usulan alias dibaca per berkas lewat `usul`, yang TIDAK menulis apa pun.
+  const isi = berkas.map((nama) => {
+    const abs = path.join(folder, nama);
+    const u = jalankanModul(["usul", abs]);
+    return {
+      nama,
+      jalur: abs,
+      alias: u.ok ? String(u.data.alias ?? "") : "",
+      durasi_ms: u.ok ? Number(u.data.durasi_ms ?? 0) : 0,
+      modul_baru: u.ok ? u.data.modul_baru !== false : true,
+      galat: u.ok ? null : u.pesan,
+    };
+  });
+  return { folder, isi };
+});
+
+ipcMain.handle("modul:usul", (_e, jalur: unknown) => {
+  const abs = jalurVideoSah(jalur);
+  if (!abs) return { ok: false, pesan: "bukan berkas video (.mp4 .webm .mov .mkv) atau berkasnya tidak ada" };
+  const u = jalankanModul(["usul", abs]);
+  return {
+    ok: u.ok, pesan: u.pesan, jalur: abs,
+    nama: path.basename(abs),
+    alias: String(u.data.alias ?? ""),
+    durasi_ms: Number(u.data.durasi_ms ?? 0),
+    modul_baru: u.data.modul_baru !== false,
+  };
+});
+
+ipcMain.handle("modul:daftar", (_e, p: { jalur?: unknown; alias?: unknown }) => {
+  const abs = jalurVideoSah(p?.jalur);
+  if (!abs) return { ok: false, pesan: "bukan berkas video atau berkasnya tidak ada" };
+  const alias = String(p?.alias ?? "").trim().toLowerCase();
+  // Alias jadi KOSAKATA yang diucapkan guru - dijaga polanya di sini juga,
+  // bukan cuma di CLI, supaya apa pun yang mengetuk lewat IPC kena aturan sama.
+  if (!/^[a-z0-9][a-z0-9 _-]{0,31}$/.test(alias)) {
+    return { ok: false, pesan: `alias "${alias}" tidak sah - huruf/angka/spasi/-/_ , maksimal 32 karakter` };
+  }
+  const d = jalankanModul(["daftar", abs, `--alias=${alias}`]);
+  if (d.ok) panelStatus({ note: `modul "${alias}" terdaftar dari ${path.basename(abs)}` });
+  return { ok: d.ok, pesan: d.pesan || (d.ok ? `modul "${alias}" terdaftar` : "gagal mendaftar"), alias };
 });
 
 ipcMain.on("tv:event", (_e, ev: { cue_id: string; tv: string; status: string; detail?: string }) => {

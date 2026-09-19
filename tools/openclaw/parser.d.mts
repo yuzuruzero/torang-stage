@@ -24,3 +24,4 @@ export function cocokkanAlias(
   aliases: string[]
 ): { alias: string; samar: boolean } | { ambigu: string[] } | null;
 export function jarakKata(a: string, b: string): number;
+export const KATA_PENGISI: ReadonlySet<string>;

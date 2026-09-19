@@ -2,7 +2,7 @@
  * Preload: jembatan sempit renderer ↔ main. Renderer TIDAK punya akses Node —
  * hanya kanal di bawah ini (least privilege).
  */
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 contextBridge.exposeInMainWorld("torang", {
   boot: () => ipcRenderer.invoke("boot"),
@@ -24,6 +24,16 @@ contextBridge.exposeInMainWorld("torang", {
   panelBukaTv: (mana: string) => ipcRenderer.send("panel:buka-tv", mana),
   panelUnbind: (seat: string) => ipcRenderer.send("panel:unbind", seat),
   panelResetMurid: () => ipcRenderer.send("panel:reset-murid"),
+
+  // --- daftar video jadi modul ---
+  // webUtils.getPathForFile: sejak Electron 32, `File.path` DIHAPUS. Tanpa ini
+  // berkas yang diseret ke panel tidak punya jalur sama sekali - dan gejalanya
+  // cuma "tidak terjadi apa-apa", yang paling lama dicari.
+  jalurBerkas: (f: File) => webUtils.getPathForFile(f),
+  modulInbox: () => ipcRenderer.invoke("modul:inbox"),
+  modulUsul: (jalur: string) => ipcRenderer.invoke("modul:usul", jalur),
+  modulDaftar: (jalur: string, alias: string) =>
+    ipcRenderer.invoke("modul:daftar", { jalur, alias }),
 
   // --- mode student (login window; room_key TIDAK pernah lewat sini) ---
   studentBoot: () => ipcRenderer.invoke("student:boot"),

@@ -26,6 +26,25 @@ type PanelStatus = {
 
 type AudioMsg = { stop?: boolean; fileUrl?: string; playAtEpoch?: number };
 
+type ItemInbox = {
+  nama: string;
+  jalur: string;
+  alias: string;
+  durasi_ms: number;
+  modul_baru: boolean;
+  galat: string | null;
+};
+
+type HasilUsul = {
+  ok: boolean;
+  pesan: string;
+  jalur?: string;
+  nama?: string;
+  alias?: string;
+  durasi_ms?: number;
+  modul_baru?: boolean;
+};
+
 /** Status jalur voice. Dikirim main lewat IPC `panel:voice`, dan status
  *  TERAKHIR ikut di BootInfo supaya panel yang baru selesai memuat tidak
  *  menampilkan "mati" padahal voice sudah siap sejak sebelum panel ada. */
@@ -36,6 +55,7 @@ type VoiceStatus = {
   alasan?: string;
   ms?: number;
   mirip?: { didengar: string; dipakai: string };
+  saran?: { kalimat: string } | null;
 };
 
 type BootInfo = {
@@ -48,6 +68,7 @@ type BootInfo = {
   status?: PanelStatus;
   voice?: VoiceStatus | null;
   voice_tombol?: string | null;
+  voice_tombol_ya?: string | null;
   hotkeys?: { go: string; stop: string; replay: string } | null;
 };
 
@@ -75,6 +96,12 @@ interface TorangBridge {
   panelBukaTv: (mana: string) => void;
   panelUnbind: (seat: string) => void;
   panelResetMurid: () => void;
+
+  // daftar video jadi modul
+  jalurBerkas: (f: File) => string;
+  modulInbox: () => Promise<{ folder: string; isi: ItemInbox[] }>;
+  modulUsul: (jalur: string) => Promise<HasilUsul>;
+  modulDaftar: (jalur: string, alias: string) => Promise<{ ok: boolean; pesan: string; alias: string }>;
 
   // overlay & glow
   onOverlayShow: (cb: (data: unknown) => void) => void;

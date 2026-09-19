@@ -6,6 +6,25 @@ yang tidak ada di sana ditolak sebelum apa pun dikirim ke panggung.
 
 Dulu itu berarti menyunting `manifest.json` dengan tangan. Sekarang tidak lagi.
 
+## Cara paling gampang: lewat panel operator
+
+Panggung sedang jalan? Kartu **"Video baru -> modul"** ada di panel operator.
+
+1. **Seret berkas videonya ke kotak putus-putus** di kartu itu - dari mana saja,
+   Desktop atau flashdisk, tidak harus dari folder `video-baru\`.
+   (Atau taruh di `video-baru\` lalu klik **Muat ulang folder**.)
+2. Panel menampilkan usulan alias - kata yang nanti diucapkan guru. Ubah kalau perlu.
+3. Klik **Daftarkan**.
+4. Panel menjawab dengan kalimat yang bisa langsung diucapkan:
+   `ucapkan: "Torang, puter hermes di TV satu"`
+
+Tidak perlu menyalakan ulang apa pun: daftar modul disegarkan tiap ucapan, jadi modul
+yang baru didaftarkan langsung dikenali voice command.
+
+Panel tidak mengerjakan pendaftarannya sendiri - ia memanggil `torang-modul` yang sama
+dengan cara-cara di bawah, termasuk seluruh pemeriksaan keamanannya. Yang dihapus kartu
+itu cuma keharusan membuka PowerShell.
+
 ## Cara cepat (lewat agent Hermes)
 
 1. Taruh berkas video di `video-baru\` di PC guru.

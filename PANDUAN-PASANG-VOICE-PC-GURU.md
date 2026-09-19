@@ -128,6 +128,21 @@ Lalu jalankan `npm run guru`. Di log panggung harus muncul satu baris:
 Tekan **F8**, ucapkan kalimatnya, tekan **F8** lagi. Videonya harus tayang - dan tidak
 boleh ada satu pun kedipan jendela hitam.
 
+**Kalau perintahnya ditolak**, panel akan menawarkan kalimat sah yang paling dekat:
+
+```
+maksudnya: "Torang, puter tes di TV tiga"
+tekan F9 untuk membenarkan - atau bicara lagi
+```
+
+**F9** menjalankannya. Tombolnya sengaja berbeda dari F8: kalau tombolnya sama, guru
+yang cuma ingin mengulang ucapannya akan menjalankan usulan tanpa bermaksud. Usulan
+kedaluwarsa sendiri setelah 15 detik, dan hilang begitu kamu bicara lagi.
+
+Yang tidak akan pernah diusulkan: nama modul yang beda jauh. Salah menebak kata aksi
+cuma memilih perintah lain dari daftar yang ada dan kamu melihatnya dulu; salah
+menebak nama modul menentukan video apa yang tayang di depan kelas.
+
 **4b. Kalau mesin itu TIDAK punya mic.**
 
 Isi `berkas_uji` dengan sebuah rekaman; tombol F8 akan memutar berkas itu lewat rantai

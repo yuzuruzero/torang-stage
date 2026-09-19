@@ -42,6 +42,7 @@ const KATA_KEADAAN: Record<VoiceStatus["keadaan"], string> = {
 };
 
 const riwayat: string[] = [];
+let tombolYa = "";
 
 function terapkanVoice(v: VoiceStatus): void {
   const pill = $("#vpill");
@@ -78,6 +79,26 @@ function terapkanVoice(v: VoiceStatus): void {
   // Pencocokan samar nama modul SELALU ditampilkan. Kalau mesin menebak nama
   // yang mirip, guru harus bisa melihat tebakannya - bukan menemukannya nanti
   // lewat video yang salah tayang.
+  // Usulan kalimat setelah perintah ditolak. Ditampilkan besar dan menyebut
+  // tombolnya, karena guru sedang menghadap murid - kalau ia harus mencari tahu
+  // caranya membenarkan, usulan ini tidak menolong siapa pun.
+  const saran = $("#vsaran");
+  if (v.saran) {
+    saran.className = "tampil";
+    saran.textContent = "";
+    const t1 = document.createElement("span");
+    t1.textContent = "maksudnya: ";
+    const b = document.createElement("b");
+    b.textContent = `\u201cTorang, ${v.saran.kalimat}\u201d`; // dari daftar tertutup, tapi tetap tidak lewat innerHTML
+    const t2 = document.createElement("div");
+    t2.className = "tekan";
+    t2.textContent = `tekan ${tombolYa || "tombol ya"} untuk membenarkan \u00b7 atau bicara lagi`;
+    saran.append(t1, b, t2);
+  } else if (v.saran === null || v.intent) {
+    saran.className = "";
+    saran.textContent = "";
+  }
+
   const mirip = $("#vmirip");
   mirip.textContent = v.mirip
     ? `\u26a0 dengar \u201c${v.mirip.didengar}\u201d \u2192 dipakai \u201c${v.mirip.dipakai}\u201d`
@@ -100,6 +121,7 @@ void window.torang.boot().then((b) => {
   $("#panelurl").textContent = `${b.cloud_api}/panel`;
   if (b.status) applyStatus(b.status);
   if (b.voice) terapkanVoice(b.voice);
+  tombolYa = b.voice_tombol_ya ?? "";
   $("#vtombol").textContent = b.voice_tombol ? `\u00b7 tekan ${b.voice_tombol} untuk bicara` : "";
   const hk = b.hotkeys;
   $("#hkGo").textContent = hk ? hk.go : "(hotkey off)";
@@ -221,5 +243,137 @@ api.resetMurid = () => {
     window.torang.panelResetMurid();
   }
 };
+
+// ---------------------------------------------------------------------------
+// Video baru -> modul
+//
+// Pendaftarannya sendiri dikerjakan `torang-modul` lewat main. Yang dihapus di
+// sini cuma satu hal: keharusan guru membuka PowerShell. Aturan apa yang boleh
+// masuk folder aset tetap satu, di CLI.
+// ---------------------------------------------------------------------------
+const zonaLepas = $("#lepas");
+const vbDaftar = $("#vbDaftar");
+
+function detik(ms: number): string {
+  return ms > 0 ? `${(ms / 1000).toFixed(1)} dtk` : "";
+}
+
+/** Satu baris berkas: nama, kotak alias, tombol daftar. */
+function barisVideo(item: ItemInbox): HTMLElement {
+  const baris = document.createElement("div");
+  baris.className = "vb-baris";
+
+  const nama = document.createElement("span");
+  nama.className = "vb-nama";
+  nama.textContent = item.nama; // nama berkas = ketikan bebas, JANGAN lewat innerHTML
+  baris.appendChild(nama);
+
+  if (item.galat) {
+    const g = document.createElement("span");
+    g.className = "vb-galat";
+    g.textContent = item.galat;
+    baris.appendChild(g);
+    return baris;
+  }
+
+  const dur = document.createElement("span");
+  dur.className = "vb-dur";
+  dur.textContent = `${detik(item.durasi_ms)}${item.modul_baru ? "" : " \u00b7 modul sudah ada"}`;
+
+  const kotak = document.createElement("input");
+  kotak.value = item.alias;
+  kotak.title = "kata yang nanti diucapkan guru";
+  kotak.setAttribute("aria-label", "alias");
+
+  const tombol = document.createElement("button");
+  tombol.textContent = "Daftarkan";
+  tombol.onclick = async () => {
+    const alias = kotak.value.trim().toLowerCase();
+    tombol.disabled = true;
+    tombol.textContent = "mendaftar\u2026";
+    const r = await window.torang.modulDaftar(item.jalur, alias);
+    const hasil = document.createElement("span");
+    hasil.className = r.ok ? "vb-ok" : "vb-galat";
+    // Alias yang berhasil ditampilkan lengkap dengan kalimat yang bisa langsung
+    // diucapkan - supaya guru tidak perlu menerjemahkan sendiri dari nama modul.
+    hasil.textContent = r.ok
+      ? `\u2713 siap \u2014 ucapkan: "Torang, puter ${r.alias} di TV satu"`
+      : `\u2715 ${r.pesan}`;
+    baris.appendChild(hasil);
+    if (r.ok) {
+      kotak.disabled = true;
+      tombol.remove();
+      dur.remove();
+    } else {
+      tombol.disabled = false;
+      tombol.textContent = "Daftarkan";
+    }
+  };
+
+  baris.append(dur, kotak, tombol);
+  return baris;
+}
+
+function tampilkan(isi: ItemInbox[], folder: string): void {
+  vbDaftar.textContent = "";
+  $("#vbFolder").textContent = folder ? `\u00b7 ${folder}` : "";
+  if (isi.length === 0) {
+    const p = document.createElement("div");
+    p.className = "muted";
+    p.style.marginTop = "8px";
+    p.textContent = "Belum ada video menunggu.";
+    vbDaftar.appendChild(p);
+    return;
+  }
+  for (const item of isi) vbDaftar.appendChild(barisVideo(item));
+}
+
+async function muatInbox(): Promise<void> {
+  vbDaftar.textContent = "memuat\u2026";
+  const r = await window.torang.modulInbox();
+  tampilkan(r.isi, r.folder);
+}
+api.muatInbox = () => void muatInbox();
+
+// Tarik-lepas. Berkas bisa berasal dari mana saja (Desktop, flashdisk) - tidak
+// harus dari folder video-baru; CLI menerima jalur apa pun.
+for (const ev of ["dragenter", "dragover"]) {
+  zonaLepas.addEventListener(ev, (e) => {
+    e.preventDefault();
+    zonaLepas.classList.add("hover");
+  });
+}
+for (const ev of ["dragleave", "drop"]) {
+  zonaLepas.addEventListener(ev, () => zonaLepas.classList.remove("hover"));
+}
+// Seluruh jendela: menjatuhkan berkas di luar kotak TIDAK boleh membuat Electron
+// menavigasi ke berkas itu - itu akan mengganti isi panel dengan video.
+for (const ev of ["dragover", "drop"]) {
+  window.addEventListener(ev, (e) => e.preventDefault());
+}
+
+zonaLepas.addEventListener("drop", async (e) => {
+  const ev = e as DragEvent;
+  ev.preventDefault();
+  const berkas = Array.from(ev.dataTransfer?.files ?? []);
+  if (berkas.length === 0) return;
+  vbDaftar.textContent = "memeriksa\u2026";
+  const hasil: ItemInbox[] = [];
+  for (const f of berkas) {
+    const jalur = window.torang.jalurBerkas(f);
+    const u = await window.torang.modulUsul(jalur);
+    hasil.push({
+      nama: u.nama ?? f.name,
+      jalur: u.jalur ?? jalur,
+      alias: u.alias ?? "",
+      durasi_ms: u.durasi_ms ?? 0,
+      modul_baru: u.modul_baru !== false,
+      galat: u.ok ? null : u.pesan,
+    });
+  }
+  tampilkan(hasil, "");
+});
+
+void muatInbox();
 
 export {};
