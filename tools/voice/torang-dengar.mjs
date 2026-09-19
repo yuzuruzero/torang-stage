@@ -41,6 +41,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseKalimat } from "../openclaw/torang-cue.mjs";
 import { rapikanTranskrip } from "./normalisasi-stt.mjs";
+import { uraiMicDshow, pilihMic } from "./mic-dshow.mjs";
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -163,17 +164,8 @@ function cariFfmpeg() {
 
 function daftarMic() {
   const r = jalankan(cariFfmpeg(), ["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"]);
-  const baris = (r.galat ?? "").split(/\r?\n/);
-  const mic = [];
-  let diAudio = false;
-  for (const b of baris) {
-    if (/DirectShow audio devices/.test(b)) { diAudio = true; continue; }
-    if (/DirectShow video devices/.test(b)) { diAudio = false; continue; }
-    if (!diAudio || /Alternative name/.test(b)) continue;
-    const m = b.match(/"([^"]+)"/);
-    if (m) mic.push(m[1]);
-  }
-  return mic;
+  // Pembaca yang SAMA dengan app panggung - dua format ffmpeg (lihat mic-dshow.mjs).
+  return uraiMicDshow((r.galat ?? "") + "\n" + (r.keluaran ?? ""));
 }
 
 function rekam(tujuan, mic) {
@@ -408,7 +400,7 @@ async function utama() {
     return;
   }
 
-  const mic = opsi("mic", null) ?? daftarMic()[0];
+  const mic = opsi("mic", null) ?? pilihMic(daftarMic()); // bukan [0]: bisa jadi Stereo Mix
   if (!mic) {
     console.log(warna("merah", "  XX tidak ada perangkat rekam yang terbaca."));
     console.log("     Colok mic, atau pakai --berkas untuk mencoba tanpa mic.");

@@ -171,6 +171,48 @@ memutar rekaman yang sama alih-alih mendengarkan.
 
 ---
 
+## Memakai clicker sebagai tombol bicara
+
+Kode tidak peduli tombolnya datang dari keyboard atau dari clicker - yang dicari
+cuma **tombol apa yang dikirim clicker itu**.
+
+**1. Cari tahu.** Buka PowerShell, tempel, Enter, lalu tekan tiap tombol clicker:
+
+```powershell
+while ($true) { $k = [Console]::ReadKey($true); "$($k.Key)   $($k.Modifiers)" }
+```
+
+Tiap tekanan mencetak satu baris, misalnya `PageDown   0` atau `F5   Shift`.
+Ctrl+C untuk berhenti. **Kalau menekan tombol clicker tidak mencetak apa pun**,
+tombol itu bukan tombol keyboard - kabari, itu perlu cara lain.
+
+**2. Tulis ke config** (`apps\theater\torang-theater.config.json`), apa adanya
+seperti yang tercetak - nama seperti `OemPeriod` atau `MediaPlay` diterjemahkan
+sendiri oleh app:
+
+```json
+  "voice": {
+    "enabled": true,
+    "tombol": "PageDown",
+    "tombol_ya": "PageUp"
+  }
+```
+
+Kalau barisnya menyebut modifier (`F5   Shift`), tulis `"Shift+F5"`.
+
+**3. Nyalakan ulang panggung.** Kartu Voice command akan menyebut tombol barunya.
+
+Pengaturan ini **bertahan** saat panggung dipasang ulang - pemasang membacanya dari
+config lama.
+
+Dua hal yang perlu diketahui:
+
+- Tombolnya didaftarkan untuk seluruh Windows. Selama panggung menyala, tombol itu
+  **tidak sampai ke program lain** - kalau clicker yang sama dipakai untuk slide
+  PowerPoint, keduanya akan berebut.
+- **Jangan pakai `Escape`**, walaupun clicker mengirimnya: Escape dipakai di mana-mana
+  untuk menutup dialog, dan selama panggung menyala ia akan berhenti bekerja.
+
 ## Kalau ada yang tidak beres
 
 Tempelkan **seluruh** keluaran langkah yang gagal, jangan diringkas. Yang paling sering
@@ -189,6 +231,7 @@ menipu adalah galat yang menunjuk baris yang tidak bersalah.
 | Whisper gagal verifikasi | Visual C++ Redistributable belum ada | pasang "Microsoft Visual C++ Redistributable x64", lalu `tools\voice\PASANG-WHISPER.bat` |
 | ffmpeg tidak terpasang | winget tidak ada di mesin itu | `winget install Gyan.FFmpeg`, atau pasang manual |
 | `--ucap` gagal kirim, HTTP 401/403 | kunci ruangan beda | bandingkan baris `Kunci :` dengan isi Desktop bat |
+| panel: `ffmpeg (...) tidak melihat satu pun mic` | mic tidak tercolok, atau izin Windows tertutup | Settings > Privacy & security > Microphone: **"Let desktop apps access your microphone"** ON |
 | `--ucap` jalan, `--daftar-mic` kosong | belum ada mic, atau izin Windows tertutup | Settings > Privacy & security > Microphone: nyalakan **"Microphone access"** DAN **"Let desktop apps access your microphone"**, lalu PowerShell baru |
 | mic jalan tapi kalimat ditolak | Whisper salah dengar | tempel baris `didengar :` - itu bahan memperbaiki tabel salah-dengar |
 | `voice siap` tidak muncul sama sekali | `voice.enabled` masih `false` | perbaiki config, jalankan ulang `npm run guru` |

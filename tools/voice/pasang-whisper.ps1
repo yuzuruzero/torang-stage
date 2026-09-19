@@ -229,9 +229,8 @@ if (-not $adaFfmpeg) {
 Write-Host ""
 Ok "SELESAI. Mesin STT siap."
 Write-Host ""
-Write-Host "  Langkah berikutnya:" -ForegroundColor Cyan
-Write-Host "    1. .\REKAM-UJI.bat    - rekam 26 kalimat baku dari mic"
-Write-Host "    2. .\NILAI-UJI.bat    - jalankan Whisper + parser, cetak angkanya"
+Write-Host "  Pakai: nyalakan panggung, lalu F8 untuk bicara (di dalam app, tanpa PowerShell)." -ForegroundColor Cyan
+Write-Host "  Alat ukur (opsional, untuk pengembang): .\REKAM-UJI.bat lalu .\NILAI-UJI.bat"
 Write-Host ""
 if (-not $ffmpeg) {
   Awas "Ingat: ffmpeg belum ada, jadi langkah 1 belum bisa jalan."

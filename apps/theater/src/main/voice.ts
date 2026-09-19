@@ -43,6 +43,8 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { parseKalimat, type HasilParse } from "../../../../tools/openclaw/parser.mjs";
 import { rapikanTranskrip } from "../../../../tools/voice/normalisasi-stt.mjs";
 import { cariSaran } from "../../../../tools/openclaw/saran.mjs";
+// Pembaca daftar mic yang SAMA dengan torang-dengar.mjs - dua format ffmpeg.
+import { uraiMicDshow, pilihMic } from "../../../../tools/voice/mic-dshow.mjs";
 
 export interface VoiceConfig {
   enabled: boolean;
@@ -99,6 +101,42 @@ type Lapor = (s: StatusVoice) => void;
 // Semua proses anak dijalankan tanpa jendela konsol. Tanpa ini, tiap ucapan
 // memunculkan kedipan jendela hitam di depan kelas.
 const TANPA_JENDELA = { windowsHide: true } as const;
+
+/**
+ * Nama tombol -> akselerator Electron.
+ *
+ * Cara mencari tahu tombol apa yang dikirim clicker adalah
+ * `[Console]::ReadKey()` di PowerShell, dan nama yang ditulisnya BEDA dengan
+ * nama yang diterima Electron ("OemPeriod" vs ".", "MediaPlay" vs
+ * "MediaPlayPause"). Diterjemahkan di sini supaya guru bisa menyalin apa yang
+ * terlihat di layar ke config apa adanya - tanpa kamus, tanpa salah tebak.
+ */
+export function akselerator(nama: string): string {
+  const n = String(nama ?? "").trim();
+  const peta: Record<string, string> = {
+    OemPeriod: ".", OemComma: ",", OemMinus: "-", OemPlus: "=",
+    Spacebar: "Space", Enter: "Return",
+    LeftArrow: "Left", RightArrow: "Right", UpArrow: "Up", DownArrow: "Down",
+    MediaPlay: "MediaPlayPause", MediaNext: "MediaNextTrack", MediaPrevious: "MediaPreviousTrack",
+    Next: "PageDown", Prior: "PageUp",
+  };
+  if (peta[n]) return peta[n];
+  const angka = n.match(/^D([0-9])$/);   // ReadKey menulis angka 5 sebagai "D5"
+  if (angka?.[1]) return angka[1];
+  return n;
+}
+
+/** Daftarkan tombol global; nama yang tidak dikenal Electron MELEMPAR, bukan false. */
+function daftarkanTombol(nama: string, aksi: () => void): { ok: true } | { ok: false; alasan: string } {
+  const a = akselerator(nama);
+  try {
+    return globalShortcut.register(a, aksi)
+      ? { ok: true }
+      : { ok: false, alasan: `tombol "${nama}" sudah dipakai program lain` };
+  } catch {
+    return { ok: false, alasan: `nama tombol "${nama}" tidak dikenal (contoh yang sah: F8, PageDown, PageUp, B)` };
+  }
+}
 
 function jalankan(exe: string, args: string[]) {
   const r = spawnSync(exe, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, ...TANPA_JENDELA });
@@ -179,15 +217,9 @@ export class Voice {
 
   private micPertama(ff: string): string | null {
     const r = jalankan(ff, ["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"]);
-    let diAudio = false;
-    for (const b of (r.galat + r.keluaran).split(/\r?\n/)) {
-      if (/DirectShow audio devices/.test(b)) { diAudio = true; continue; }
-      if (/DirectShow video devices/.test(b)) { diAudio = false; continue; }
-      if (!diAudio || /Alternative name/.test(b)) continue;
-      const m = b.match(/"([^"]+)"/);
-      if (m?.[1]) return m[1];
-    }
-    return null;
+    // BUKAN yang pertama: di PC guru, yang pertama adalah "Stereo Mix" - suara
+    // yang keluar dari speaker PC sendiri. Lihat pilihMic.
+    return pilihMic(uraiMicDshow(r.galat + r.keluaran));
   }
 
   /** Daftar modul diambil ulang tiap ucapan: modul bisa didaftarkan saat kelas berjalan. */
@@ -225,11 +257,18 @@ export class Voice {
       const ff = this.cariFfmpeg();
       if (!ff) return { ok: false, pesan: "ffmpeg dengan dshow tidak ditemukan — perekaman mic tidak bisa jalan" };
       const mic = this.cfg.mic || this.micPertama(ff);
-      if (!mic) return { ok: false, pesan: "tidak ada perangkat mic yang terbaca" };
+      if (!mic) {
+        // Sebutkan ffmpeg MANA yang ditanya: di mesin dengan dua ffmpeg, itu
+        // separuh jawabannya. Dan sebutkan penyebab paling umum sesudah format.
+        return {
+          ok: false,
+          pesan: `ffmpeg (${ff}) tidak melihat satu pun mic. Cek: mic tercolok, lalu Settings > Privacy > Microphone - "Let desktop apps access your microphone" harus ON`,
+        };
+      }
       this.cfg.mic = mic;
       sumber = `mic: ${mic}`;
     }
-    const terdaftar = globalShortcut.register(this.cfg.tombol, () => {
+    const terdaftar = daftarkanTombol(this.cfg.tombol, () => {
       // Ucapan baru membatalkan usulan yang belum dijawab - kalau tidak, usulan
       // lama bisa dibenarkan setelah guru sudah beralih ke perintah lain.
       this.saranTertunda = null;
@@ -237,12 +276,12 @@ export class Voice {
       if (this.rekaman) void this.hentikanDanProses(apiUrl);
       else this.mulaiRekam();
     });
-    if (!terdaftar) return { ok: false, pesan: `tombol ${this.cfg.tombol} sudah dipakai app lain` };
+    if (!terdaftar.ok) return { ok: false, pesan: terdaftar.alasan };
 
     const tombolYa = this.cfg.tombol_ya?.trim();
     if (tombolYa) {
-      const ok = globalShortcut.register(tombolYa, () => { void this.benarkanSaran(); });
-      if (!ok) console.warn(`[voice] tombol ya "${tombolYa}" sudah dipakai app lain - usulan tidak bisa dibenarkan lewat tombol`);
+      const ya = daftarkanTombol(tombolYa, () => { void this.benarkanSaran(); });
+      if (!ya.ok) console.warn(`[voice] tombol ya: ${ya.alasan} - usulan tidak bisa dibenarkan lewat tombol`);
     }
 
     this.lapor({ keadaan: "diam" });
@@ -402,8 +441,8 @@ export class Voice {
   }
 
   berhenti() {
-    try { globalShortcut.unregister(this.cfg.tombol); } catch { /* */ }
-    try { if (this.cfg.tombol_ya) globalShortcut.unregister(this.cfg.tombol_ya); } catch { /* */ }
+    try { globalShortcut.unregister(akselerator(this.cfg.tombol)); } catch { /* */ }
+    try { if (this.cfg.tombol_ya) globalShortcut.unregister(akselerator(this.cfg.tombol_ya)); } catch { /* */ }
     if (this.pewaktu) clearTimeout(this.pewaktu);
     try { this.rekaman?.kill(); } catch { /* */ }
     this.lapor({ keadaan: "mati" });

@@ -46,12 +46,19 @@ Write-Host "Node.js $nodeVer OK"
 # bawaan. Memasang ulang seharusnya tidak menuntut orang mengingat sesuatu yang
 # sudah tersimpan di mesinnya sendiri.
 $kunciLama = ""
+$voiceLama = $null
 $cfgLama = Join-Path $Tujuan "apps\theater\torang-theater.config.json"
 if (Test-Path $cfgLama) {
   try {
     $isiLama = [System.IO.File]::ReadAllText($cfgLama).TrimStart([char]0xFEFF)
-    $kunciLama = ([string](($isiLama | ConvertFrom-Json).room_key)).Trim()
-  } catch { $kunciLama = "" }  # config rusak - jangan gagalkan pemasangan
+    $jsonLama = $isiLama | ConvertFrom-Json
+    $kunciLama = ([string]($jsonLama.room_key)).Trim()
+    # Pengaturan voice yang disetel guru (tombol clicker, nama mic) ikut dibaca -
+    # alasannya sama dengan kunci: pemasangan ulang tidak boleh diam-diam
+    # mengembalikan clicker ke F8. Gejalanya "clicker tiba-tiba mati", tanpa
+    # petunjuk apa pun bahwa pembaruan yang menyebabkannya.
+    $voiceLama = $jsonLama.voice
+  } catch { $kunciLama = ""; $voiceLama = $null }  # config rusak - jangan gagalkan pemasangan
 }
 
 if (-not $RoomKey -and $kunciLama -match "^[A-Za-z0-9_-]+$") {
@@ -113,6 +120,22 @@ if ($LASTEXITCODE -ne 0) { Pop-Location; Gagal "npm install gagal - cek internet
 Pop-Location
 
 # --- 5. Tulis config TEACHER (tanpa BOM - pelajaran insiden 11 Agu) ----------
+# Tombol & mic dari pemasangan lama dipakai lagi. berkas_uji SENGAJA tidak:
+# kalau ikut terbawa, F8 di kelas akan memutar rekaman uji alih-alih mendengar.
+$tombolPtt = "F8"
+$tombolYa  = "F9"
+$micCfg    = ""
+if ($voiceLama) {
+  $t = ([string]$voiceLama.tombol).Trim()
+  if ($t -match '^[A-Za-z0-9+.,=-]{1,40}$') { $tombolPtt = $t }
+  $y = ([string]$voiceLama.tombol_ya).Trim()
+  if ($y -match '^[A-Za-z0-9+.,=-]{1,40}$') { $tombolYa = $y }
+  $m = ([string]$voiceLama.mic).Trim()
+  if ($m.Length -gt 0 -and $m.Length -le 200) { $micCfg = $m }
+  if ($tombolPtt -ne "F8" -or $tombolYa -ne "F9" -or $micCfg) {
+    Write-Host "Pengaturan voice dipakai ulang: bicara=$tombolPtt, ya=$tombolYa$(if ($micCfg) { ", mic=$micCfg" })" -ForegroundColor Green
+  }
+}
 $cfg = @{
   mode        = "teacher"
   endpoint_id = "teacher-1"
@@ -128,8 +151,10 @@ $cfg = @{
   # belum ada") - itu jauh lebih baik daripada voice yang diam tanpa alasan.
   voice       = @{
     enabled    = (-not $TanpaVoice)
-    tombol     = "F8"
+    tombol     = $tombolPtt
+    tombol_ya  = $tombolYa
     mode       = "toggle"
+    mic        = $micCfg
     berkas_uji = ""
   }
 } | ConvertTo-Json -Depth 5
@@ -231,10 +256,14 @@ if ($TanpaVoice) {
 Write-Host "`n=== SELESAI ===" -ForegroundColor Green
 Write-Host "Jalankan lewat 'Torang Panggung.bat' di Desktop (cloud + panggung sekaligus)."
 if (-not $TanpaVoice) {
-  Write-Host "Voice command: nyalakan panggung dulu, lalu di PowerShell baru:"
-  Write-Host "    cd `"$Tujuan\tools\voice`"" -ForegroundColor Cyan
-  Write-Host "    node torang-dengar.mjs --ucap `"Torang, puter tes di TV tiga`"   (uji tanpa mic)" -ForegroundColor Cyan
-  Write-Host "    .\TORANG-DENGAR.bat                                            (pakai mic)" -ForegroundColor Cyan
+  # Dulu di sini tertulis "buka PowerShell baru, jalankan TORANG-DENGAR.bat".
+  # Itu jalur lama - voice kini hidup DI DALAM app panggung. Petunjuk yang
+  # menyuruh membuka PowerShell justru mengarahkan guru ke hal yang diminta
+  # untuk tidak pernah tampil di depan kelas.
+  Write-Host "Voice command sudah menyala di dalam panggung - tanpa PowerShell:" -ForegroundColor Cyan
+  Write-Host "    F8 = mulai / selesai bicara"
+  Write-Host "    F9 = benarkan usulan kalimat kalau perintahnya ditolak"
+  Write-Host "    Status & apa yang terdengar tampil di kartu 'Voice command' di panel."
 }
 if ($ipLan) {
   Write-Host ""
