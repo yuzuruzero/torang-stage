@@ -34,12 +34,30 @@ describe("salah-dengar yang TERBUKTI terjadi di rekaman sungguhan", () => {
   });
 });
 
+describe('"d" jadi "di" - transkrip asli PC guru 19 Sep', () => {
+  it('"Puter, ters, d, tv, satu." kini sampai ke modul yang benar', () => {
+    // Dengan daftar modul, seperti di app: tanpa daftar, alias diteruskan mentah.
+    const rapi = rapikanTranskrip("Puter, ters, d, tv, satu.");
+    expect(rapi.ok).toBe(true);
+    const r = parseKalimat(rapi.teks, { aliases: [{ alias: "tes" }] });
+    expect(r.ok).toBe(true);
+    // "ters" -> "tes" lewat pencocokan nama modul, dan itu DILAPORKAN ke guru.
+    expect(r.intent).toEqual({ intent: "PLAY_MODULE", alias: "tes", target: "tv1" });
+    expect(r.mirip).toEqual({ didengar: "ters", dipakai: "tes" });
+  });
+});
+
 describe("lapisan ini tidak boleh menciptakan perintah", () => {
-  it("kata sopan di depan perintah sah TETAP ditolak", () => {
-    // Kalau "tolong" pernah dipetakan jadi pemanggil, ia akan dibuang parser
-    // dan kalimat improvisasi ini berubah jadi perintah sah.
-    expect(jalur("Torang, tolong sapa komputer enam").ok).toBe(false);
-    expect(jalur("Perang, tolong sapa komp enam").ok).toBe(false);
+  it("kata di luar kosakata di depan perintah sah TETAP ditolak", () => {
+    // Contohnya dulu memakai "tolong". Sejak 18 Sep "tolong" SENGAJA dibuang
+    // parser sebagai kata sopan (KATA_PENGISI), jadi "Torang, tolong sapa komp
+    // enam" kini memang sah - dan contoh itu tidak lagi menguji apa pun.
+    // Tes ini sempat merah sejak commit 8641a1c tanpa ada yang menjalankannya.
+    //
+    // Yang dijaga tetap sama: kata yang BUKAN kata sopan dan bukan aksi tidak
+    // boleh lolos hanya karena didahului pemanggil yang salah dengar.
+    expect(jalur("Torang, periksa sapa komp enam").ok).toBe(false);
+    expect(jalur("Perang, matikan sapa komp enam").ok).toBe(false);
     expect(jalur("Torang, coba periksa keadaan panggung").ok).toBe(false);
   });
 

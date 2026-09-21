@@ -89,6 +89,9 @@ export const PETA_KATA = new Map([
   ["glo", "glow"], ["glau", "glow"], ["gelo", "glow"],
   ["bukak", "buka"], ["bukalah", "buka"],
   ["tutuplah", "tutup"], ["tutub", "tutup"],
+  // penghubung. TERBUKTI 19 Sep 2026 di PC guru: "Puter, ters, d, tv, satu."
+  // "d" berdiri sendiri tidak punya arti lain di grammar ini, jadi aman.
+  ["d", "di"],
   // objek
   ["windows", "window"], ["windo", "window"], ["jendelanya", "jendela"],
   ["layer", "layar"], ["layarnya", "layar"],

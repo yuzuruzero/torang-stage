@@ -42,6 +42,7 @@ import { fileURLToPath } from "node:url";
 import { parseKalimat } from "../openclaw/torang-cue.mjs";
 import { rapikanTranskrip } from "./normalisasi-stt.mjs";
 import { uraiMicDshow, pilihMic } from "./mic-dshow.mjs";
+import { promptWhisper } from "./prompt-whisper.mjs";
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -69,15 +70,7 @@ const berkasMasuk = opsi("berkas", null);
 // yang tidak jalan di PC guru yang baru.
 const ucapLangsung = opsi("ucap", null);
 
-const BIAS = [
-  "Torang.",
-  "Perintah panggung: puter, pindah, buka, tutup, lanjut, ulang, stop, sapa, glow.",
-  "Sasaran: TV satu, TV dua, TV tiga, TV empat, layar satu, layar dua, layar tiga,",
-  "layar empat, komp, semua layar, semua komp.",
-  "Angka: satu, dua, tiga, empat, lima, enam, tujuh, delapan, sembilan, sepuluh,",
-  "sebelas, dua belas, tiga belas, empat belas, lima belas, enam belas,",
-  "tujuh belas, delapan belas, sembilan belas, dua puluh.",
-].join(" ");
+// Contekan Whisper: lihat prompt-whisper.mjs (satu sumber untuk app, CLI, dan pengukur).
 
 const W = { abu: "\x1b[90m", hijau: "\x1b[32m", merah: "\x1b[31m", kuning: "\x1b[33m", biru: "\x1b[36m", mati: "\x1b[0m" };
 const warna = (k, t) => `${W[k]}${t}${W.mati}`;
@@ -186,8 +179,9 @@ function keWav(sumber, tujuan) {
   return r.kode === 0 && fs.existsSync(tujuan);
 }
 
-function transkrip(wav) {
-  const args = ["-m", MODEL, "-f", wav, "-l", "id", "-nt", "-t", String(threads), "--prompt", BIAS];
+function transkrip(wav, vocab) {
+  const contekan = promptWhisper((vocab?.aliases ?? []).map((a) => a.alias));
+  const args = ["-m", MODEL, "-f", wav, "-l", "id", "-nt", "-t", String(threads), "--prompt", contekan];
   if (pakaiGrammar) args.push("--grammar", GBNF, "--grammar-rule", "root", "--grammar-penalty", String(denda));
   const t0 = Date.now();
   const r = jalankan(EXE, args);
@@ -278,7 +272,7 @@ async function proses(wav, vocab, sumberAsli, teksLangsung) {
   nomor++;
   const t = teksLangsung !== undefined
     ? { teks: teksLangsung, msMuat: null, msProduksi: null, msDinding: 0 }
-    : transkrip(wav);
+    : transkrip(wav, vocab);
   if (t.gagal) { console.log(warna("merah", `  XX ${t.gagal}`)); return; }
 
   console.log(`  ${warna("abu", "didengar :")} ${warna("biru", `"${t.teks || "(kosong)"}"`)}`);

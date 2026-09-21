@@ -43,6 +43,8 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { parseKalimat, type HasilParse } from "../../../../tools/openclaw/parser.mjs";
 import { rapikanTranskrip } from "../../../../tools/voice/normalisasi-stt.mjs";
 import { cariSaran } from "../../../../tools/openclaw/saran.mjs";
+// Contekan Whisper yang SAMA dengan torang-dengar & nilai-stt (dulu 3 salinan).
+import { promptWhisper } from "../../../../tools/voice/prompt-whisper.mjs";
 // Pembaca daftar mic yang SAMA dengan torang-dengar.mjs - dua format ffmpeg.
 import { uraiMicDshow, pilihMic } from "../../../../tools/voice/mic-dshow.mjs";
 
@@ -126,6 +128,33 @@ export function akselerator(nama: string): string {
   return n;
 }
 
+/**
+ * Seberapa keras rekaman ini? Angka "max_volume" dari filter volumedetect ffmpeg,
+ * dalam dB (0 = paling keras, -91 = hening digital sempurna).
+ */
+export function volumeMaks(teksFfmpeg: string): number | null {
+  const m = String(teksFfmpeg ?? "").match(/max_volume:\s*(-?[\d.]+|-inf)\s*dB/);
+  if (!m?.[1]) return null;
+  return m[1] === "-inf" ? -Infinity : parseFloat(m[1]);
+}
+
+/**
+ * Di bawah ini rekaman dianggap HENING, dan Whisper tidak dijalankan.
+ *
+ * Kasus 19 Sep 2026 di PC guru: berkali-kali "diproses tapi hasilnya kosong",
+ * sementara mic yang sama jalan untuk ChatGPT. Whisper dan model yang sama,
+ * dijalankan atas rekaman suara asli, SELALU menghasilkan teks - jadi transkrip
+ * kosong berarti yang direkam memang hening: perangkat yang salah, lubang jack
+ * yang kosong, mic di-mute, atau izin mic Windows tertutup (dshow tetap
+ * "merekam", isinya nol semua). Tanpa pemeriksaan ini, keempatnya tampil sama
+ * persis di panel: "(kosong)". Dengannya, panel menyebut perangkat mana yang
+ * hening dan seberapa hening.
+ *
+ * -50 dB: bicara normal di dekat mic berada di sekitar -30..0 dB; derau lubang
+ * jack kosong sekitar -70..-60 dB; izin tertutup menghasilkan -91 dB.
+ */
+const AMBANG_HENING_DB = -50;
+
 /** Daftarkan tombol global; nama yang tidak dikenal Electron MELEMPAR, bukan false. */
 function daftarkanTombol(nama: string, aksi: () => void): { ok: true } | { ok: false; alasan: string } {
   const a = akselerator(nama);
@@ -155,6 +184,13 @@ export class Voice {
   private ffmpeg: string | null = null;
   private ffmpegUbah: string | null = null;
   private vocab: { aliases?: { alias: string }[] } | null = null;
+  /**
+   * Alamat cloud disimpan sejak mulai(). Dulu dikirim lewat parameter, dan
+   * jalur batas-waktu mengirim null - ucapan yang dihentikan oleh batas waktu
+   * (bukan tombol kedua) diproses TANPA daftar modul: usulan kalimat tidak
+   * punya bahan, dan nama modul tidak dicocokkan sama sekali.
+   */
+  private apiUrl: string | null = null;
   private saranTertunda: { intent: Record<string, unknown>; kalimat: string; sampai: number } | null = null;
 
   constructor(cfg: VoiceConfig, appRoot: string, kirim: Kirim, lapor: Lapor) {
@@ -233,6 +269,7 @@ export class Voice {
 
   mulai(apiUrl: string): { ok: boolean; pesan: string } {
     if (!this.cfg.enabled) return { ok: false, pesan: "voice dimatikan di config" };
+    this.apiUrl = apiUrl;
 
     for (const [nama, p] of [["whisper-cli.exe", this.berkas(path.join("bin", "whisper-cli.exe"))],
                              ["model", this.berkas(path.join("model", this.cfg.model))]] as const) {
@@ -303,7 +340,7 @@ export class Voice {
     this.lapor({ keadaan: "merekam" });
     // Batas keras: kalau tombol kedua tidak pernah ditekan, ffmpeg berhenti
     // sendiri di -t, dan pewaktu ini yang memprosesnya.
-    this.pewaktu = setTimeout(() => { void this.hentikanDanProses(null); }, (this.cfg.maks_detik + 1) * 1000);
+    this.pewaktu = setTimeout(() => { void this.hentikanDanProses(this.apiUrl); }, (this.cfg.maks_detik + 1) * 1000);
   }
 
   /** Mode uji tanpa mic: ubah berkas jadi WAV lalu lewatkan rantai yang sama. */
@@ -397,8 +434,32 @@ export class Voice {
       this.lapor({ keadaan: "memproses", alasan: "rekaman terlalu pendek" });
       return;
     }
+    // Rekaman hening? Periksa DULU - lebih murah daripada whisper, dan jauh lebih
+    // jelas daripada transkrip kosong. Berkas uji dilewati: itu bukan mic.
+    if (!this.cfg.berkas_uji) {
+      const ff = this.cariFfmpegUbah();
+      if (ff) {
+        const v = jalankan(ff, ["-hide_banner", "-nostats", "-i", wav, "-af", "volumedetect", "-f", "null", "-"]);
+        const db = volumeMaks(v.galat + v.keluaran);
+        if (db !== null && db < AMBANG_HENING_DB) {
+          const angka = Number.isFinite(db) ? `${db.toFixed(0)} dB` : "hening total";
+          const alasan =
+            `mic "${this.cfg.mic}" merekam HENING (${angka}). ` +
+            (db <= -85
+              ? "Isinya nol: cek Settings > Privacy > Microphone - \"Let desktop apps access your microphone\" harus ON, dan mic tidak di-mute."
+              : "Cek kabel/penerima mic masih tercolok, atau mic lain yang dipakai - set \"mic\" di config.");
+          this.lapor({ keadaan: "memproses", didengar: "", intent: null, alasan, saran: null });
+          this.catat({ jenis: "hening", mic: this.cfg.mic, db: Number.isFinite(db) ? db : null });
+          return;
+        }
+      }
+    }
+
+    // Daftar modul diambil SEBELUM whisper jalan: nama modul ikut di contekannya.
+    const vocab = await this.segarkanVocab(apiUrl ?? this.apiUrl ?? "");
+    const contekan = promptWhisper((vocab?.aliases ?? []).map((a) => a.alias));
     const args = ["-m", this.berkas(path.join("model", this.cfg.model)), "-f", wav,
-                  "-l", "id", "-nt", "-t", String(this.cfg.threads), "--prompt", BIAS];
+                  "-l", "id", "-nt", "-t", String(this.cfg.threads), "--prompt", contekan];
     if (this.cfg.grammar) {
       args.push("--grammar", this.berkas("torang.gbnf"), "--grammar-rule", "root",
                 "--grammar-penalty", String(this.cfg.denda_grammar));
@@ -413,7 +474,6 @@ export class Voice {
     // Transkrip di STDOUT; log & timing di STDERR. Jangan digabung.
     const teks = r.keluaran.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).join(" ");
     const rapi = rapikanTranskrip(teks);
-    const vocab = apiUrl ? await this.segarkanVocab(apiUrl) : this.vocab;
     // Tipe eksplisit: tanpa ini, gabungan literal `{ ok: false }` melebar jadi
     // `boolean` dan TypeScript kehilangan kemampuan membedakan kedua cabang.
     const hasil: HasilParse = rapi.ok
@@ -448,13 +508,3 @@ export class Voice {
     this.lapor({ keadaan: "mati" });
   }
 }
-
-const BIAS = [
-  "Torang.",
-  "Perintah panggung: puter, pindah, buka, tutup, lanjut, ulang, stop, sapa, glow.",
-  "Sasaran: TV satu, TV dua, TV tiga, TV empat, layar satu, layar dua, layar tiga,",
-  "layar empat, komp, semua layar, semua komp.",
-  "Angka: satu, dua, tiga, empat, lima, enam, tujuh, delapan, sembilan, sepuluh,",
-  "sebelas, dua belas, tiga belas, empat belas, lima belas, enam belas,",
-  "tujuh belas, delapan belas, sembilan belas, dua puluh.",
-].join(" ");

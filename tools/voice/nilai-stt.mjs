@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { parseKalimat } from "../openclaw/torang-cue.mjs";
 import { rapikanTranskrip } from "./normalisasi-stt.mjs";
+import { promptWhisper } from "./prompt-whisper.mjs";
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,15 +53,7 @@ const fileLaporan = path.resolve(
 );
 
 // --- bias kosakata (initial prompt Whisper) ----------------------------------
-const BIAS = [
-  "Torang.",
-  "Perintah panggung: puter, pindah, buka, tutup, lanjut, ulang, stop, sapa, glow.",
-  "Sasaran: layar satu, layar dua, layar tiga, layar empat,",
-  "TV satu, TV dua, TV tiga, TV empat, komp, semua layar, semua komp.",
-  "Angka: satu, dua, tiga, empat, lima, enam, tujuh, delapan, sembilan, sepuluh,",
-  "sebelas, dua belas, tiga belas, empat belas, lima belas, enam belas,",
-  "tujuh belas, delapan belas, sembilan belas, dua puluh.",
-].join(" ");
+// Contekan Whisper: lihat prompt-whisper.mjs (satu sumber untuk app, CLI, dan pengukur).
 
 // --- bantu -------------------------------------------------------------------
 const samaIntent = (a, b) => kunci(a) === kunci(b);
@@ -77,7 +70,9 @@ function persentil(angka, p) {
 /** Jalankan whisper-cli pada satu WAV. Kembalikan transkrip + timing internal. */
 function jalankanWhisper(wav) {
   const args = ["-m", fileModel, "-f", wav, "-l", "id", "-nt", "-t", String(threads)];
-  if (pakaiBias) args.push("--prompt", BIAS);
+  // Contekan yang SAMA dengan produksi - kalau beda, angka pengukuran ini
+  // mengukur sistem yang tidak pernah dipakai di kelas.
+  if (pakaiBias) args.push("--prompt", promptWhisper(["tes"]));
   // whisper.cpp hanya menyalakan grammar kalau --grammar DAN --grammar-rule
   // dua-duanya dikirim; kurang satu, ia DILEWATI DIAM-DIAM.
   if (pakaiGrammar) {
