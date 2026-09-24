@@ -10,6 +10,10 @@ import {
   planOpenScene,
   planCloseScene,
   planReopenWindow,
+  rencanakanMajemuk,
+  rencanakanTahap,
+  intentDariTata,
+  type PerencanaSatu,
   type PlanContext,
 } from "../src/planner.js";
 import { DEFAULT_GEOMETRY, initialShowState, type ShowState } from "../src/show-state.js";
@@ -55,8 +59,9 @@ function ctx(state: ShowState = initialShowState()): PlanContext {
 }
 
 describe("planPlayModule", () => {
-  it("menghasilkan 1 cue PLAY_VIDEO valid + audio ke teacher + state pindah", () => {
-    const plan = planPlayModule(ctx(), "tes", "tv1");
+  it("Torang sudah di layar itu → 1 cue materi + audio, langsung", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const plan = planPlayModule(ctx(state), "tes", "tv1");
     expect(plan.cues).toHaveLength(1);
     const cue = CueSchema.parse(plan.cues[0]);
     expect(cue.type).toBe("PLAY_VIDEO");
@@ -65,6 +70,41 @@ describe("planPlayModule", () => {
     expect(cue.audio).toEqual({ play_on: "teacher", asset: "m99_materi_tes_audio.m4a" });
     expect(Date.parse(cue.start_at)).toBe(NOW + 1500);
     expect(plan.state).toEqual({ screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} });
+  });
+
+  it("Torang belum muncul → enter dulu, materi SESUDAHNYA (bukan bersamaan)", () => {
+    const plan = planPlayModule(ctx(), "tes", "tv1");
+    expect(plan.cues).toHaveLength(2);
+    const enter = CueSchema.parse(plan.cues[0]);
+    const suara = CueSchema.parse(plan.cues[1]);
+    expect(enter.targets).toEqual(["tv1"]);
+    expect(enter.asset).toBe("m99_enter_l_tes");
+    expect(enter.audio).toBeUndefined(); // suara materi TIDAK boleh ikut mulai saat enter
+    expect(enter.payload).toMatchObject({
+      role: "enter", then_asset: "m99_materi_tes", then_loop: false, then_duration_ms: 4000,
+    });
+    expect(Date.parse(enter.start_at)).toBe(NOW + 1500);
+    expect(suara.targets).toEqual(["teacher"]);
+    expect(suara.audio).toEqual({ play_on: "teacher", asset: "m99_materi_tes_audio.m4a" });
+    expect(Date.parse(suara.start_at)).toBe(NOW + 1500 + 2000); // tepat saat enter selesai
+    expect(plan.state.screen).toBe("tv1");
+    expect(plan.tayang).toEqual([
+      { tv: "tv1", alias: "tes", mulai: NOW + 3500, sampai: NOW + 7500, torang: true },
+    ]);
+  });
+
+  it("tanpa sasaran → diputar di layar tempat Torang berada", () => {
+    const state: ShowState = { screen: "tv3", lastDir: null, activeModule: "m99", scenes: {} };
+    const plan = planPlayModule(ctx(state), "tes");
+    expect(plan.cues).toHaveLength(1);
+    expect(plan.cues[0]!.targets).toEqual(["tv3"]);
+    expect(plan.note).toMatch(/tempat Torang berada/);
+  });
+
+  it("tanpa sasaran & Torang belum muncul → TV1, lewat enter", () => {
+    const plan = planPlayModule(ctx(), "tes");
+    expect(plan.cues[0]!.targets).toEqual(["tv1"]);
+    expect(plan.cues[0]!.payload).toMatchObject({ role: "enter" });
   });
 
   it("alias tak dikenal → PlanError (kosakata dari manifest)", () => {
@@ -292,25 +332,38 @@ describe("klip transisi dipinjam dari modul default", () => {
 });
 
 describe("puter ke TV lain: layar lama ditinggalkan (HUKUM ilusi kontinu §6)", () => {
-  it("Torang di tv2, puter di tv4 → ada cue exit di tv2 sebelum materi di tv4", () => {
+  it("Torang di tv1, puter di tv2 → exit tv1, LALU enter tv2, LALU materi (bug 24 Sep)", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const plan = planPlayModule(ctx(state), "tes", "tv2");
+    expect(plan.cues).toHaveLength(3);
+    const [keluar, masuk, suara] = plan.cues.map((c) => CueSchema.parse(c));
+    expect(keluar!.targets).toEqual(["tv1"]);
+    expect(keluar!.asset).toBe("m99_exit_r_tes");
+    expect(Date.parse(keluar!.start_at)).toBe(NOW + 1500);
+    expect(masuk!.targets).toEqual(["tv2"]);
+    expect(masuk!.asset).toBe("m99_enter_l_tes"); // HUKUM: exit kanan disambut enter kiri
+    // enter mulai saat exit hampir selesai (overlap 300 ms), BUKAN bersamaan
+    expect(Date.parse(masuk!.start_at)).toBe(NOW + 1500 + 2000 - 300);
+    expect(masuk!.payload).toMatchObject({ then_asset: "m99_materi_tes", then_loop: false });
+    // materi (dan suaranya) mulai setelah enter selesai
+    expect(Date.parse(suara!.start_at)).toBe(NOW + 1500 + 1700 + 2000);
+    expect(plan.state.screen).toBe("tv2");
+    expect(plan.state.lastDir).toBe("right");
+  });
+
+  it("Torang di tv2, puter di tv4 → layar lama tetap ditinggalkan dengan klip exit", () => {
     const state: ShowState = { screen: "tv2", lastDir: null, activeModule: "m99", scenes: {} };
     const plan = planPlayModule(ctx(state), "tes", "tv4");
-    expect(plan.cues).toHaveLength(2);
     const keluar = CueSchema.parse(plan.cues[0]);
-    const materi = CueSchema.parse(plan.cues[1]);
     expect(keluar.targets).toEqual(["tv2"]);
     expect(keluar.payload).toMatchObject({ role: "exit" });
-    expect(materi.targets).toEqual(["tv4"]);
+    expect(plan.cues[1]!.targets).toEqual(["tv4"]);
     expect(plan.state.screen).toBe("tv4");
   });
 
   it("puter di layar yang SAMA → tetap satu cue (tidak ada yang ditinggalkan)", () => {
     const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
     expect(planPlayModule(ctx(state), "tes", "tv1").cues).toHaveLength(1);
-  });
-
-  it("Torang belum di layar mana pun → tetap satu cue", () => {
-    expect(planPlayModule(ctx(), "tes", "tv1").cues).toHaveLength(1);
   });
 
   it("puter ke komp murid tidak memindahkan Torang, jadi TV lama tidak ditinggalkan", () => {
@@ -363,5 +416,181 @@ describe("buka ulang window TV (pemulihan, bukan aksi panggung)", () => {
 
   it("bukan untuk komp murid", () => {
     expect(() => planReopenWindow(ctx(), "komp3")).toThrow(PlanError);
+  });
+});
+
+// ===========================================================================
+// Kalimat majemuk & tata layar (24 Sep 2026)
+// ===========================================================================
+const satu: PerencanaSatu = (c, i) => {
+  switch (i.intent) {
+    case "PLAY_MODULE": return planPlayModule(c, i.alias, i.target);
+    case "MOVE": return planMove(c, i.to);
+    case "OPEN_SCENE": return planOpenScene(c, i.scene, i.target);
+    case "CLOSE_SCENE": return planCloseScene(c, i.target);
+    case "SAPA": return planSapa(c, i.target, null);
+    case "GLOW": return planGlow(c, i.target, i.preset, i.duration_ms);
+    default: throw new PlanError("tidak didukung");
+  }
+};
+
+const manifestDenganSlide: Manifest = ManifestSchema.parse({
+  ...manifest,
+  modules: [
+    ...manifest.modules,
+    {
+      id: "m50", alias: "slide", slug: "slide", presenter: "ahli-slide",
+      assets: [{ file: "m50_materi_slide.mp4", jenis: "materi", duration_ms: 10000 }],
+      audio: [],
+    },
+  ],
+});
+
+describe("tutup layar tempat Torang berada", () => {
+  it("Torang pergi dengan klip exit, layar kembali idle", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const plan = planCloseScene(ctx(state), "tv1");
+    expect(plan.cues).toHaveLength(1);
+    expect(plan.cues[0]!.targets).toEqual(["tv1"]);
+    expect(plan.cues[0]!.payload).toMatchObject({ role: "exit" });
+    expect(plan.state.screen).toBeNull();
+  });
+});
+
+describe("tahap serentak ('... dan ...')", () => {
+  it("puter tes di layar 1 DAN buka office di layar 2 → keduanya mulai bersamaan", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const r = rencanakanTahap(ctx(state), [
+      { intent: "PLAY_MODULE", alias: "tes", target: "tv1" },
+      { intent: "OPEN_SCENE", scene: "office", target: "tv2" },
+    ], satu);
+    expect(r.plan.cues).toHaveLength(2);
+    expect(r.plan.cues.every((c) => Date.parse(c.start_at) === NOW + 1500)).toBe(true);
+    expect(r.plan.state.scenes).toEqual({ tv2: "office" });
+    expect(r.selesai).toBe(NOW + 1500 + 4000); // materi 4 dtk
+  });
+
+  it("layar yang disebut dua kali → seluruh kalimat ditolak", () => {
+    expect(() => rencanakanTahap(ctx(), [
+      { intent: "PLAY_MODULE", alias: "tes", target: "tv1" },
+      { intent: "OPEN_SCENE", scene: "office", target: "tv1" },
+    ], satu)).toThrow(/tv1 disebut dua kali/);
+  });
+
+  it("dua perintah yang sama-sama memindahkan Torang → ditolak (Torang cuma satu)", () => {
+    expect(() => rencanakanTahap(ctx(), [
+      { intent: "PLAY_MODULE", alias: "tes", target: "tv1" },
+      { intent: "MOVE", to: "tv3" },
+    ], satu)).toThrow(/satu tempat/);
+  });
+
+  it("stop tidak boleh digabung", () => {
+    expect(() => rencanakanTahap(ctx(), [
+      { intent: "STOP" }, { intent: "MOVE", to: "tv3" },
+    ], satu)).toThrow(/harus diucapkan sendiri/);
+  });
+
+  it("buka office di layar yang sedang DITINGGALKAN Torang → menunggu exit selesai", () => {
+    // Torang di tv1. Urutan ucapan: office dulu, baru puter - tetap sah,
+    // karena pemindah Torang direncanakan duluan.
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const r = rencanakanTahap(ctx(state), [
+      { intent: "OPEN_SCENE", scene: "office", target: "tv1" },
+      { intent: "PLAY_MODULE", alias: "tes", target: "tv2" },
+    ], satu);
+    const exit = r.plan.cues.find((c) => (c.payload as Record<string, unknown>).role === "exit")!;
+    const scene = r.plan.cues.find((c) => c.type === "SWITCH_SCENE")!;
+    expect(exit.targets).toEqual(["tv1"]);
+    expect(Date.parse(scene.start_at)).toBe(Date.parse(exit.start_at) + 2000);
+    expect(r.plan.state).toMatchObject({ screen: "tv2", scenes: { tv1: "office" } });
+  });
+
+  it("modul tanpa Torang (slide) boleh tayang serentak dengan modul Torang", () => {
+    const c: PlanContext = { ...ctx(), manifest: manifestDenganSlide };
+    const r = rencanakanTahap(c, [
+      { intent: "PLAY_MODULE", alias: "tes", target: "tv1" },
+      { intent: "PLAY_MODULE", alias: "slide", target: "tv3" },
+    ], satu);
+    expect(r.plan.state.screen).toBe("tv1"); // slide tidak menggeser Torang
+    const slide = r.plan.cues.find((x) => x.targets[0] === "tv3")!;
+    expect(slide.asset).toBe("m50_materi_slide");
+    expect(slide.enter_from).toBeNull();
+  });
+
+  it("modul tanpa Torang di layar tempat Torang berada → ditolak dengan pesan untuk guru", () => {
+    const c: PlanContext = {
+      ...ctx({ screen: "tv3", lastDir: null, activeModule: "m99", scenes: {} }),
+      manifest: manifestDenganSlide,
+    };
+    expect(() => planPlayModule(c, "slide", "tv3")).toThrow(/pindahkan dulu/);
+  });
+});
+
+describe("tahap berurutan ('... lalu ...')", () => {
+  it("pindah ke layar 2 lalu ke layar 3 → langkah 2 mulai saat langkah 1 selesai", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const r = rencanakanMajemuk(ctx(state), [
+      [{ intent: "MOVE", to: "tv2" }],
+      [{ intent: "MOVE", to: "tv3" }],
+    ], satu);
+    expect(r).toHaveLength(2);
+    // langkah 1: exit tv1 (T..T+2000), enter tv2 (T+1700..T+3700)
+    expect(r[0]!.selesai).toBe(NOW + 1500 + 1700 + 2000);
+    expect(r[1]!.mulai).toBe(r[0]!.selesai);
+    expect(r[1]!.plan.state.screen).toBe("tv3");
+  });
+
+  it("puter tes lalu pindah → pindah menunggu MATERI selesai, bukan cuma enter", () => {
+    const r = rencanakanMajemuk(ctx(), [
+      [{ intent: "PLAY_MODULE", alias: "tes", target: "tv1" }],
+      [{ intent: "MOVE", to: "tv2" }],
+    ], satu);
+    // enter 2000 + materi 4000 setelah lead
+    expect(r[1]!.mulai).toBe(NOW + 1500 + 2000 + 4000);
+  });
+
+  it("kesalahan di langkah terakhir ketahuan SEBELUM langkah pertama jalan", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    expect(() => rencanakanMajemuk(ctx(state), [
+      [{ intent: "OPEN_SCENE", scene: "office", target: "tv3" }],
+      [{ intent: "MOVE", to: "tv3" }],
+    ], satu)).toThrow(/langkah 2: .*tutup dulu/);
+  });
+
+  it("puter tanpa sasaran di langkah 2 → layar Torang SETELAH langkah 1", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const r = rencanakanMajemuk(ctx(state), [
+      [{ intent: "MOVE", to: "tv4" }],
+      [{ intent: "PLAY_MODULE", alias: "tes" }],
+    ], satu);
+    expect(r[1]!.intents[0]).toEqual({ intent: "PLAY_MODULE", alias: "tes", target: "tv4" });
+  });
+});
+
+describe("tata layar", () => {
+  it("preset → satu tahap serentak; 'biarkan' dilewati", () => {
+    const intents = intentDariTata({
+      nama: "pembukaan",
+      layar: { tv1: "modul:tes", tv2: "scene:office", tv3: "biarkan", tv4: "kosong" },
+    });
+    expect(intents).toEqual([
+      { intent: "PLAY_MODULE", alias: "tes", target: "tv1" },
+      { intent: "OPEN_SCENE", scene: "office", target: "tv2" },
+      { intent: "CLOSE_SCENE", target: "tv4" },
+    ]);
+    const r = rencanakanTahap(ctx(), intents, satu);
+    expect(r.plan.state).toMatchObject({ screen: "tv1", scenes: { tv2: "office" } });
+  });
+
+  it("'kosong' di layar Torang sementara modul lain membawanya pergi → tidak bentrok", () => {
+    const state: ShowState = { screen: "tv1", lastDir: null, activeModule: "m99", scenes: {} };
+    const intents = intentDariTata({
+      nama: "geser",
+      layar: { tv1: "kosong", tv2: "modul:tes", tv3: "biarkan", tv4: "biarkan" },
+    });
+    const r = rencanakanTahap(ctx(state), intents, satu);
+    expect(r.plan.state.screen).toBe("tv2");
+    // hanya satu exit (dari pemindah), bukan dua
+    expect(r.plan.cues.filter((c) => (c.payload as Record<string, unknown>).role === "exit")).toHaveLength(1);
   });
 });

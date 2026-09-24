@@ -24,6 +24,14 @@ contextBridge.exposeInMainWorld("torang", {
   panelBukaTv: (mana: string) => ipcRenderer.send("panel:buka-tv", mana),
   panelUnbind: (seat: string) => ipcRenderer.send("panel:unbind", seat),
   panelResetMurid: () => ipcRenderer.send("panel:reset-murid"),
+  // --- mode video (tombol di panel guru & login murid, 24 Sep 2026) ---
+  modeVideo: () => ipcRenderer.invoke("video:mode"),
+  gantiModeVideo: (kartuGrafis: boolean) => ipcRenderer.invoke("video:mode-ganti", kartuGrafis),
+  // --- jeda konfirmasi voice & tata layar (24 Sep 2026) ---
+  voiceBatal: () => ipcRenderer.send("panel:voice-batal"),
+  tataSimpan: (preset: unknown) => ipcRenderer.invoke("tata:simpan", preset),
+  tataHapus: (nama: string) => ipcRenderer.invoke("tata:hapus", nama),
+  rundownReset: () => ipcRenderer.invoke("rundown:reset"),
 
   // --- daftar video jadi modul ---
   // webUtils.getPathForFile: sejak Electron 32, `File.path` DIHAPUS. Tanpa ini

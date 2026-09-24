@@ -1,0 +1,22 @@
+{
+  "presets": [
+    {
+      "nama": "pembukaan",
+      "layar": {
+        "tv1": "modul:tes",
+        "tv2": "scene:office",
+        "tv3": "biarkan",
+        "tv4": "biarkan"
+      }
+    },
+    {
+      "nama": "bersih",
+      "layar": {
+        "tv1": "kosong",
+        "tv2": "kosong",
+        "tv3": "kosong",
+        "tv4": "kosong"
+      }
+    }
+  ]
+}

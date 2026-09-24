@@ -9,14 +9,35 @@
  * Parsernya sendiri tetap JS polos, supaya CLI, tes, dan app memakai SATU
  * perilaku yang sama - bukan dua salinan yang menyimpang diam-diam.
  */
+/** Satu bagian kalimat majemuk, untuk ditampilkan per baris di panel. */
+export type BagianKalimat = {
+  teks: string;
+  intent: Record<string, unknown>;
+  /** Penghubung di depan bagian ini: "serentak" (dan) / "urut" (lalu); null = bagian pertama. */
+  jenis: "serentak" | "urut" | null;
+};
+
 export type HasilParse =
-  | { ok: true; intent: Record<string, unknown>; mirip?: { didengar: string; dipakai: string } }
+  | {
+      ok: true;
+      intent: Record<string, unknown>;
+      mirip?: { didengar: string; dipakai: string };
+      /** Hanya ada pada kalimat majemuk. */
+      bagian?: BagianKalimat[];
+    }
   | { ok: false; error: string };
 
-export function parseKalimat(
-  kalimat: string,
-  vocab?: { aliases?: { alias: string }[] } | null
-): HasilParse;
+export type VocabParser = {
+  aliases?: { alias: string }[];
+  /** Nama scene yang dikenal ("tampilkan office ..."). Bawaan: ["office"]. */
+  scenes?: string[];
+  /** Nama preset tata layar. Kosong/tidak ada = tidak diperiksa di sini. */
+  tata?: string[];
+};
+
+export const MAKS_BAGIAN: number;
+
+export function parseKalimat(kalimat: string, vocab?: VocabParser | null): HasilParse;
 export function bacaAngka(tokens: string[]): [number, number] | null;
 export function bacaTarget(tokens: string[]): [string, number] | null;
 export function cocokkanAlias(

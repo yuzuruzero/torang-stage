@@ -56,7 +56,12 @@ type VoiceStatus = {
   ms?: number;
   mirip?: { didengar: string; dipakai: string };
   saran?: { kalimat: string } | null;
+  bagian?: Array<{ teks: string; intent: Record<string, unknown>; jenis: "serentak" | "urut" | null }>;
+  konfirmasi?: { sampai: number; total_ms: number } | null;
+  dibatalkan?: boolean;
 };
+
+type PresetTata = { nama: string; layar: { tv1: string; tv2: string; tv3: string; tv4: string } };
 
 type BootInfo = {
   mode: string;
@@ -96,6 +101,12 @@ interface TorangBridge {
   panelBukaTv: (mana: string) => void;
   panelUnbind: (seat: string) => void;
   panelResetMurid: () => void;
+  voiceBatal: () => void;
+  modeVideo: () => Promise<{ kartu_grafis: boolean }>;
+  gantiModeVideo: (kartuGrafis: boolean) => Promise<{ ok: boolean; error?: string }>;
+  tataSimpan: (preset: PresetTata) => Promise<{ ok: boolean; error?: string; presets?: PresetTata[] }>;
+  tataHapus: (nama: string) => Promise<{ ok: boolean; error?: string; presets?: PresetTata[] }>;
+  rundownReset: () => Promise<{ ok: boolean; error?: string }>;
 
   // daftar video jadi modul
   jalurBerkas: (f: File) => string;

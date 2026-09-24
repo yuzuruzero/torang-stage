@@ -25,7 +25,8 @@ describe("salah-dengar yang TERBUKTI terjadi di rekaman sungguhan", () => {
   it("\"Perang\" + \"tifi\" tetap menghasilkan intent yang benar", () => {
     expect(jalur("Perang, putar modul tes di tifi tiga.")).toEqual({
       ok: true,
-      intent: { intent: "PLAY_MODULE", alias: "modul tes", target: "tv3" },
+      // "modul" sejak 24 Sep 2026 dilewati seperti "video" ("puter modul tes").
+      intent: { intent: "PLAY_MODULE", alias: "tes", target: "tv3" },
     });
     expect(jalur("Perang, pindah ke tifi empat.")).toEqual({
       ok: true,

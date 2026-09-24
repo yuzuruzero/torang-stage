@@ -24,6 +24,15 @@
   .dot { display:inline-block; width:9px; height:9px; border-radius:99px; margin-right:6px; background:#d14343; }
   .dot.online { background:#43d17c; }
   .muted { color:#7580b3; font-size:12px; }
+  /* --- saklar mode video (24 Sep 2026) --- */
+  .saklar-baris { display:flex; gap:12px; align-items:flex-start; }
+  .saklar { position:relative; display:inline-block; width:46px; height:26px; flex:0 0 auto; margin-top:2px; }
+  .saklar input { opacity:0; width:0; height:0; }
+  .saklar span { position:absolute; inset:0; background:#2c3564; border-radius:99px; transition:.15s; cursor:pointer; }
+  .saklar span::before { content:""; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#e8ebff; border-radius:50%; transition:.15s; }
+  .saklar input:checked + span { background:#c08a2d; }
+  .saklar input:checked + span::before { transform:translateX(20px); }
+  .saklar input:disabled + span { opacity:.5; cursor:default; }
 </style>
 </head>
 <body>
@@ -51,6 +60,14 @@
     <div class="halo" id="halo"></div>
     <div class="muted" id="kursiku"></div>
     <div class="muted" style="margin-top:10px">Biarkan jendela ini terbuka. Kecilkan saja — panggung yang akan menyapamu.</div>
+  </div>
+
+  <div class="card" style="font-size:13px">
+    <div class="saklar-baris">
+          <label class="saklar" title="mode video cadangan"><input type="checkbox" id="saklarVideo" /><span></span></label>
+          <div><b>Video patah-patah?</b> Nyalakan <b>mode video cadangan</b> (memakai kartu grafis). Jendela ini akan dibuka ulang.
+            <div class="muted" id="saklarVideoKet">memeriksa…</div></div>
+        </div>
   </div>
 
   <script src="./login.js"></script>

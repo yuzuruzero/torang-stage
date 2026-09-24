@@ -171,9 +171,13 @@ describe("jalur cue teacher", () => {
     const before = Date.now();
     const r = await intent({ intent: "PLAY_MODULE", alias: "tes", target: "tv1" });
     expect(r.status).toBe(200);
+    // Torang belum muncul -> masuk dulu (enter), materi menumpang sebagai
+    // klip lanjutan. (Manifest e2e tanpa audio, jadi tidak ada cue suara -
+    // cue suara diuji di planner.test.ts.)
     const m = await teacher.next((x) => x.kind === "cue");
     const cue = CueSchema.parse(m.cue);
-    expect(cue.asset).toBe("m99_materi_tes");
+    expect(cue.asset).toBe("m99_enter_l_tes");
+    expect(cue.payload).toMatchObject({ role: "enter", then_asset: "m99_materi_tes", then_loop: false });
     const dt = Date.parse(cue.start_at) - before;
     expect(dt).toBeGreaterThan(1000);
     expect(dt).toBeLessThan(2500);

@@ -140,12 +140,20 @@ export const SceneNameSchema = z
   .string()
   .regex(/^[a-z0-9][a-z0-9_-]{0,31}$/, "nama scene: huruf kecil/angka/-/_");
 
-export const IntentSchema = z.discriminatedUnion("intent", [
+/**
+ * Intent tunggal — satu aksi panggung. Dipisah dari IntentSchema supaya
+ * MAJEMUK bisa memuat daftar intent tunggal TANPA rekursi (MAJEMUK di dalam
+ * MAJEMUK tidak masuk akal dan tidak boleh bisa dikirim).
+ */
+const INTENT_TUNGGAL = [
   z.object({
     intent: z.literal("PLAY_MODULE"),
     /** Alias pendek resmi dari manifest (kosakata parser). */
     alias: z.string().min(1),
-    target: TargetSchema,
+    /** Kosong = putar di layar tempat Torang berada (tv1 kalau Torang belum
+     *  muncul di mana pun). Permintaan Hadi 24 Sep 2026: "puter tes" tanpa
+     *  sasaran tidak boleh ditolak. */
+    target: TargetSchema.optional(),
   }),
   z.object({ intent: z.literal("MOVE"), to: TargetSchema }),
   z.object({ intent: z.literal("STOP") }),
@@ -171,8 +179,70 @@ export const IntentSchema = z.discriminatedUnion("intent", [
   /** "Torang, buka lagi window TV empat" — window TV yang tertutup dibuka ulang
    *  di mesin guru. Pemulihan, bukan aksi panggung. */
   z.object({ intent: z.literal("REOPEN_WINDOW"), target: TargetSchema }),
+] as const;
+
+export const IntentTunggalSchema = z.discriminatedUnion("intent", [...INTENT_TUNGGAL]);
+export type IntentTunggal = z.infer<typeof IntentTunggalSchema>;
+
+/** Batas perintah per kalimat. Lebih panjang = peluang salah dengar naik, dan
+ *  satu kata salah menggagalkan seluruh kalimat. Empat layar sekaligus = TATA. */
+export const MAKS_BAGIAN_MAJEMUK = 3;
+
+/** Nama preset tata layar: satu-dua kata yang bisa diucapkan. */
+export const NamaTataSchema = z
+  .string()
+  .regex(/^[a-z0-9]+( [a-z0-9]+)?$/, "nama tata: 1-2 kata huruf kecil/angka");
+
+export const IntentSchema = z.discriminatedUnion("intent", [
+  ...INTENT_TUNGGAL,
+  /**
+   * Kalimat majemuk: `tahap` dijalankan BERURUTAN, isi tiap tahap SERENTAK.
+   *   "puter tes di layar 1 dan buka office di layar 2" -> [[a, b]]
+   *   "pindah ke layar 2 lalu ke layar 3"               -> [[a], [b]]
+   * Tahap berikutnya menunggu video tahap sebelumnya SELESAI (keputusan Hadi
+   * 24 Sep 2026). Semua tahap divalidasi dulu; satu gagal = seluruhnya ditolak.
+   */
+  z.object({
+    intent: z.literal("MAJEMUK"),
+    tahap: z
+      .array(z.array(IntentTunggalSchema).min(1))
+      .min(1)
+      .refine(
+        (t) => t.reduce((n, g) => n + g.length, 0) <= MAKS_BAGIAN_MAJEMUK,
+        `paling banyak ${MAKS_BAGIAN_MAJEMUK} perintah per kalimat`
+      ),
+  }),
+  /** "Torang, tata pembukaan" — jalankan preset tata layar (serentak). */
+  z.object({ intent: z.literal("TATA"), nama: NamaTataSchema }),
+  /** Batalkan tahap majemuk yang masih menunggu, TANPA menghentikan tayangan. */
+  z.object({ intent: z.literal("BATAL_ANTREAN") }),
+  /** Panel guru: lompat ke langkah rundown ke-`ke` (0-based) dan jalankan
+   *  langkah itu - "klik untuk lompat, urutan bebas" (deck 16 Sep, layar 1). */
+  z.object({ intent: z.literal("LOMPAT_RUNDOWN"), ke: z.number().int().min(0).max(999) }),
 ]);
 export type Intent = z.infer<typeof IntentSchema>;
+
+// ---------------------------------------------------------------------------
+// Preset tata layar — isi keempat TV sekaligus, dipanggil satu kata.
+// ---------------------------------------------------------------------------
+
+/**
+ * Isi satu TV di preset. String, supaya mudah dibaca & disunting tangan:
+ *   "biarkan"        — jangan sentuh layar ini
+ *   "kosong"         — tutup scene / Torang pergi, layar kembali idle
+ *   "modul:<alias>"  — putar modul (presenter torang = Torang pindah ke sini)
+ *   "scene:<nama>"   — buka scene (mis. office)
+ */
+export const IsiTataSchema = z
+  .string()
+  .regex(/^(biarkan|kosong|modul:[a-z0-9]+( [a-z0-9]+)*|scene:[a-z0-9][a-z0-9_-]{0,31})$/, "isi layar tidak sah");
+
+export const PresetTataSchema = z.object({
+  nama: NamaTataSchema,
+  layar: z.object({ tv1: IsiTataSchema, tv2: IsiTataSchema, tv3: IsiTataSchema, tv4: IsiTataSchema }),
+});
+export type PresetTata = z.infer<typeof PresetTataSchema>;
+
 
 // ---------------------------------------------------------------------------
 // Pesan WS klien → server

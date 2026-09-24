@@ -57,14 +57,31 @@ if (alias.length === 0) {
 
 const asli = fs.readFileSync(GBNF, "utf8");
 const barisModul = `modul       ::= ${alias.map((a) => `"${a}"`).join(" | ")}`;
-const baru = asli.replace(/^modul\s*::=.*$/m, barisModul);
+let baru = asli.replace(/^modul\s*::=.*$/m, barisModul);
 if (baru === asli && !asli.includes(barisModul)) {
   console.error("Baris 'modul ::=' tidak ketemu di torang.gbnf - tidak ada yang diubah.");
   process.exit(1);
 }
 
+// Scene & tata layar (24 Sep 2026). Sama alasannya dengan modul: preset yang
+// baru disimpan di panel harus langsung bisa DIUCAPKAN, dan yang dihapus harus
+// langsung tidak bisa. Cloud lama tanpa daftar ini -> baris dibiarkan apa adanya.
+const scenes = [...new Set((vocab.scenes ?? []).map((x) => String(x).toLowerCase()))]
+  .map((x) => x.replace(/-/g, " "))
+  .filter(bisaDiucapkan);
+const tata = [...new Set((vocab.tata ?? []).map((x) => String(x).toLowerCase()))].filter(bisaDiucapkan);
+if (scenes.length > 0) {
+  baru = baru.replace(/^scene\s*::=.*$/m, `scene       ::= ${scenes.map((a) => `"${a}"`).join(" | ")}`);
+}
+// Tanpa preset sama sekali, "tata" tetap perlu SATU pilihan supaya GBNF sah;
+// pakai kata yang tidak akan pernah jadi nama preset, dan cloud menolaknya.
+const pilihanTata = tata.length > 0 ? tata : ["belum ada"];
+baru = baru.replace(/^tata\s*::=.*$/m, `tata        ::= ${pilihanTata.map((a) => `"${a}"`).join(" | ")}`);
+
 console.log(`Dari ${api}/api/vocab:`);
 console.log(`  ${alias.length} alias masuk grammar: ${alias.join(", ")}`);
+if (scenes.length) console.log(`  scene: ${scenes.join(", ")}`);
+console.log(`  tata layar: ${tata.length ? tata.join(", ") : "(belum ada preset)"}`);
 if (dibuang.length) {
   console.log(`  ${dibuang.length} DILEWATI (ada karakter yang tidak bisa diucapkan): ${dibuang.join(", ")}`);
   console.log("  Alias seperti itu tidak akan pernah bisa dipanggil lewat suara.");

@@ -141,3 +141,126 @@ lama** dengan klip exit — dulu layar lama terus mengulang idle dan Torang tamp
 ada di tiga tempat sekaligus (melanggar HUKUM ilusi kontinu §6). Modul yang tak
 punya klip exit: layar lama dibersihkan ke idle kosong lewat `SWITCH_SCENE`
 `scene: null` — lebih baik hilang rapi daripada menggandakan Torang.
+
+## D21 · (22 Sep 2026, dipasang ke repo 24 Sep) Decoder video selalu software
+**Keputusan.** App theater menjalankan Chromium dengan
+`--disable-accelerated-video-decode`. Semua klip panggung didekode di CPU
+(FFmpeg), bukan lewat decoder hardware GPU.
+**Alasan.** Di PC guru baru (Ryzen 7 8700F, RTX 5070, Windows 11 build 26200,
+Electron 43/Chromium 150) decoder hardware D3D11 hanya menghasilkan ~10 fps:
+klip 2 dtk selesai 3,5–14 dtk, `electron-log.txt` penuh `DecoderStatus` error.
+Klip panggung 720p/1080p H.264 — decoder software di CPU mana pun sanggup
+ratusan fps. Dengan software decode, perilaku pemutaran jadi SERAGAM di semua
+PC dan tidak lagi bergantung driver GPU masing-masing mesin. Terukur 2.001–2.006
+ms untuk klip 2.000 ms, 0 frame jatuh, dalam kondisi kelas.
+**Konsekuensi.** (1) Klip di atas 1080p atau codec berat (HEVC/AV1) tidak
+disarankan — tetap H.264 ≤1080p sesuai kontrak aset. (2) PC murid ikut kena
+setelan ini; kalau ada PC yang justru tersendat setelah ini, geser tombol
+**"Video patah-patah? mode video cadangan"** (panel guru / jendela login murid) —
+lihat D28.
+**Ditolak.** Throttling renderer latar (dugaan pertama) — terbukti bukan
+penyebabnya (raf tetap 60/dtk); switch anti-throttling + `backgroundThrottling:false`
+dipertahankan hanya karena benar untuk kiosk. Memaksa jalur ANGLE/blocklist —
+tidak berpengaruh, dicabut.
+**Cara dipasang ke repo (24 Sep).** Kode asli PC guru baru belum di-commit dan
+tidak terjangkau dari PC utama; obatnya dipasang ULANG dari deskripsi
+`HANDOFF-2026-09-22-pc-guru-baru.md`: switch di `main.ts` (bisa dimatikan per PC
+lewat tombol, D28), `backgroundThrottling:false` di `windows.ts`. Telemetri frame
+(raf/frame/drop di ACK `played`) dan `gpu-diagnostik.json` — alat diagnosa, bukan
+obat — TIDAK ikut.
+
+## D22 · (24 Sep 2026) `puter` ke layar lain = exit → enter → BARU materi
+Dulu `puter X di tvB` saat Torang di tvA mengirim exit di tvA dan **materi di
+tvB pada detik yang sama**, tanpa klip enter — Torang muncul sebelum sempat pergi
+(dilihat Hadi saat uji). Kini urutannya sama dengan `pindah`: exit di tvA (T),
+enter di tvB (T + exit − overlap), materi setelah enter selesai.
+**Cara materi menyusul:** menumpang sebagai `then_asset` klip enter (jalur idle
+yang sudah ada), BUKAN cue kedua ke TV yang sama — `tv.ts runCue` membatalkan
+cue terjadwal dan langsung memuat berkas begitu cue baru datang, jadi enter akan
+terpotong. Suara materi dijadwalkan lewat cue **audio-saja** (`targets:["teacher"]`,
+tanpa `asset`) pada detik materi mulai. Enter membawa `materi_audio` supaya
+`ulang` bisa memasangkan suaranya lagi.
+**Keterbatasan dikenal:** materi dimuat saat enter selesai (tanpa pre-load),
+jadi gambar bisa telat puluhan ms dari suara. Obat yang benar = pre-load di
+`tv.ts` (elemen video kedua) — ditunda sampai perubahan `tv.ts` dari PC guru
+baru (22 Sep) sudah digabung, supaya tidak ada dua versi `tv.ts` yang bentrok.
+
+## D23 · (24 Sep 2026) `puter` tanpa sasaran = layar tempat Torang berada
+`target` pada `PLAY_MODULE` jadi opsional. Kosong → `show.screen`, atau TV
+pertama di cincin kalau Torang belum muncul. Diselesaikan di CLOUD (yang tahu
+Torang di mana), bukan di parser. Pada kalimat berurutan, sasaran kosong
+diselesaikan dengan keadaan SETELAH langkah sebelumnya ("pindah ke TV4 lalu
+puter tes" → tes di TV4).
+
+## D24 · (24 Sep 2026) Kalimat majemuk: `dan` = serentak, `lalu` = berurutan
+Intent baru `MAJEMUK { tahap: IntentTunggal[][] }` — tahap berurutan, isi tahap
+serentak; paling banyak **3 perintah** (`MAKS_BAGIAN_MAJEMUK`). Aturan:
+semua tahap disimulasikan dulu — satu gagal, seluruh kalimat 422, tidak ada cue
+terkirim; tahap berikutnya dikirim cloud saat tayangan tahap sebelumnya
+**selesai** (keputusan Hadi: tunggu video, bukan tunggu Torang sampai) dan
+direncanakan ULANG dengan keadaan saat itu; satu layar maksimal disebut sekali
+per tahap; maksimal satu pemindah Torang per tahap, direncanakan duluan;
+perintah lain di layar yang sedang ditinggalkan Torang menunggu klip exit.
+stop/lanjut/ulang/buka window/tata harus sendiri. Antrean hanya satu; kalimat
+majemuk/tata baru menggantikannya; STOP dan `BATAL_ANTREAN` mengosongkannya;
+perintah tunggal biasa tidak. Parser dan GBNF memakai aturan yang sama (diuji:
+grammar menghasilkan ⇔ parser menerima).
+**Ditolak:** mengirim semua tahap sekaligus dengan `start_at` jauh di depan —
+renderer membatalkan cue terjadwal saat cue baru datang, show-state akan
+melompat ke keadaan akhir, dan STOP tidak bisa membatalkan cue yang sudah
+terkirim ke endpoint.
+
+## D25 · (24 Sep 2026) Tata layar = preset 4 TV, disimpan cloud, disunting panel
+`apps/cloud/config/tata-layar.json` (env `TORANG_TATA`). Isi per TV: `biarkan` /
+`kosong` / `modul:<alias>` / `scene:<nama>`. Dijalankan sebagai SATU tahap
+majemuk (aturan D24 berlaku). Disimpan lewat `POST /api/tata` (room_key) — cloud
+menolak modul yang tidak ada, scene yang tidak dikenal (`TORANG_SCENES`, bawaan
+`office`), lebih dari satu modul ber-presenter Torang, dan nama yang memakai
+kata perintah/penghubung. `kosong` di layar tempat Torang berada = Torang pamit
+(perilaku baru `tutup`).
+
+## D26 · (24 Sep 2026) `presenter` menentukan apakah modul memindahkan Torang
+Modul ber-`presenter: "torang"` di TV = Torang pindah ke sana (dengan transisi).
+Presenter lain (slide, ahli) tayang di tempat tanpa menggeser Torang, sehingga
+empat TV bisa menampilkan empat hal berbeda tanpa melanggar HUKUM §6 (Torang
+satu). Memutar modul non-Torang di layar tempat Torang berada ditolak ("pindahkan
+dulu"). `torang-modul` saat ini selalu mendaftarkan `presenter: "torang"` —
+opsi presenter lain belum ada di CLI.
+
+## D27 · (24 Sep 2026) Jeda konfirmasi 1 dtk sebelum perintah suara dikirim
+`voice.konfirmasi_ms` (bawaan 1000; 0 = mati). Menunaikan komitmen surat amandemen
+#3 ("toast konfirmasi WAJIB"). Batal = tombol bicara ditekan lagi, atau tombol
+BATAL di panel (IPC `panel:voice-batal`, didaftarkan di `voice.ts`); tombol ya =
+kirim sekarang. Jeda ditaruh di mesin guru SEBELUM intent dikirim, jadi total
+latensi = jeda + lead 1,5 dtk.
+**Ditolak (untuk sekarang):** jeda menumpang lead 1,5 dtk seperti rancangan surat
+amandemen — itu menuntut cloud membatalkan cue yang SUDAH terkirim ke endpoint,
+dan endpoint belum punya pembatalan per-cue (hanya STOP total).
+
+## D28 · (24 Sep 2026) Mode video diganti lewat TOMBOL, bukan config
+Tombol geser "Video patah-patah? mode video cadangan" di panel guru DAN jendela
+login murid. Nyala = decoder kartu grafis; mati (bawaan) = decoder software (D21).
+Alasan (Hadi): orang yang memakai PC murid tidak akan menyunting config JSON.
+Pilihan disimpan di `userData\mode-video.json` PC itu sendiri — soal perangkat
+keras mesin itu, jadi bertahan saat repo di-update / panel dipasang ulang, dan
+tidak ikut ter-commit. Switch Chromium hanya berlaku sebelum app siap, jadi
+mengganti mode = simpan lalu `app.relaunch()` (argumen `--config=` ikut dibawa);
+murid perlu mengetik nama lagi setelahnya — tertulis di dialog konfirmasi.
+**Ditolak:** opsi `video_decoder_hardware` di config (versi pertama sore ini) —
+dicabut sebelum dipakai siapa pun.
+
+## D29 · (24 Sep 2026) Panel guru mengikuti deck (layar 1), bukan tumpukan kartu
+Tata letak tetap: bilah atas (batch · Cloud · Jam · Konten · voice · ⚙ Alat · STOP),
+tiga kolom (rundown klik-untuk-lompat · posisi Torang & peta ruangan TV + 20
+kursi · riwayat cue + efek otomatis + klip reaksi), bilah bawah suara (PTT ·
+transkrip Whisper · konfirmasi 1 detik · GO/ULANG/STOP). Aksi per layar dan per
+kursi lewat MENU saat kotaknya diklik — peta ruangan tetap bersih. Fitur yang
+tidak ada di mockup (penyunting tata layar, video baru, mode video, pemulihan)
+di laci "⚙ Alat"; chip tata layar & antrean tetap di peta ruangan.
+**Kejujuran tampilan:** efek otomatis & klip reaksi ditampilkan non-aktif dengan
+label "fase 2" / "aset belum ada" — belum ada di sistem, tidak dipura-purakan.
+"Kantor terisi" (telemetri) diganti "Murid masuk kelas" (login + online).
+**Keamanan klik:** langkah rundown dipilih dulu, baru ▶ dijalankan (intent baru
+`LOMPAT_RUNDOWN`) — satu klik salah tidak boleh menayangkan apa pun. Papan ketik
+saat panel fokus: Spasi = GO, R = ULANG, Esc = BATAL selama konfirmasi, selain
+itu STOP; tidak aktif saat mengetik di kotak isian.

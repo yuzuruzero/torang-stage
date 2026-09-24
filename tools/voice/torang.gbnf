@@ -19,16 +19,30 @@
 #
 # Whisper mengawali keluaran dengan satu spasi, jadi root ikut menyertakannya.
 
-root        ::= " " pemanggil ", " perintah "."
+root        ::= " " pemanggil ", " kalimat "."
 
 pemanggil   ::= "Torang"
 
-perintah    ::= p-puter | p-pindah | p-buka | p-tutup | p-sapa | p-glow | p-tunggal
+# Kalimat majemuk (24 Sep 2026): paling banyak TIGA perintah, digabung "dan"
+# (serentak) atau "lalu"/"habis itu"/"setelah itu" (berurutan). Kendali
+# pertunjukan (lanjut/ulang/stop), pemulihan window, dan "tata" hanya boleh
+# SENDIRI - parser menolak kalau digabung, jadi grammar pun tidak menawarkan.
+kalimat     ::= p-sendiri | perintah (sambung lanjutan)? (sambung lanjutan)?
 
-p-tunggal   ::= "lanjut" | "ulang" | "stop"
-p-puter     ::= "puter " modul " di " sasaran
+sambung     ::= " dan " | " lalu " | " habis itu " | " setelah itu "
+
+# "pindah ke layar dua lalu ke layar tiga": kata kerja pindah boleh dihilangkan.
+lanjutan    ::= perintah | "ke " layar
+
+p-sendiri   ::= "lanjut" | "ulang" | "stop" | "buka window " layar | "tata " tata
+
+perintah    ::= p-puter | p-scene | p-pindah | p-buka | p-tutup | p-sapa | p-glow
+
+# Sasaran BOLEH tidak disebut: diputar di layar tempat Torang berada.
+p-puter     ::= ("puter " | "tampilkan ") ("video " | "modul ")? modul (" di " sasaran)?
+p-scene     ::= "tampilkan " scene " di " (layar | "semua layar")
 p-pindah    ::= "pindah ke " layar
-p-buka      ::= "buka " scene " di " layar | "buka window " layar
+p-buka      ::= "buka " scene " di " layar
 p-tutup     ::= "tutup " layar
 p-sapa      ::= "sapa " komp
 p-glow      ::= "glow " ("semua komp" | komp)
@@ -43,6 +57,7 @@ komp        ::= ("komp " | "komputer ") angka20
 # berubah - kalau tidak, modul baru tidak akan pernah bisa diucapkan.
 modul       ::= "tes"
 scene       ::= "office"
+tata        ::= "pembukaan" | "bersih"
 
 angka4      ::= "satu" | "dua" | "tiga" | "empat"
 

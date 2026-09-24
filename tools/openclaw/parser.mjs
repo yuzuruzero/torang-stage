@@ -222,11 +222,157 @@ function buangPengisi(tokens, aliases) {
   return awal === 0 && akhir === tokens.length ? tokens : tokens.slice(awal, akhir);
 }
 
+// ---------------------------------------------------------------------------
+// Kalimat majemuk (24 Sep 2026)
+//
+// Di kelas keempat TV menampilkan hal berbeda, jadi guru perlu menyebut
+// beberapa layar dalam satu napas. Dua jenis penghubung, dua arti:
+//
+//   "dan"                    -> SERENTAK  (mulai bersamaan)
+//   "lalu", "habis itu", ... -> BERURUTAN (menunggu video sebelumnya selesai)
+//
+// Tiap bagian tetap harus lolos grammar tertutup yang SAMA PERSIS dengan
+// kalimat tunggal - kalimat majemuk tidak membuka satu kata baru pun. Satu
+// bagian gagal = seluruh kalimat ditolak: setengah perintah yang jalan lebih
+// membingungkan daripada tidak ada yang jalan.
+// ---------------------------------------------------------------------------
+
+/** Paling banyak sekian perintah per kalimat (sama dengan MAKS_BAGIAN_MAJEMUK
+ *  di protokol). Empat layar sekaligus -> pakai "tata <nama>". */
+export const MAKS_BAGIAN = 3;
+
+const PENGHUBUNG_SERENTAK = new Set(["dan"]);
+const PENGHUBUNG_URUT_1 = new Set(["lalu", "kemudian", "terus", "trus"]);
+/** Penghubung dua kata: "habis itu", "setelah itu", ... */
+const PENGHUBUNG_URUT_2 = new Set(["habis", "abis", "setelah", "sesudah", "sehabis"]);
+
+/** Aksi yang tidak masuk akal digabung: kendali pertunjukan & pemulihan. */
+const HARUS_SENDIRI = { STOP: "stop", GO: "lanjut", REPLAY: "ulang", REOPEN_WINDOW: "buka window" };
+
+/**
+ * Pecah token di penghubung. Mengembalikan daftar bagian beserta jenis
+ * penghubung DI DEPANNYA ("serentak" | "urut"; bagian pertama null).
+ */
+function pecahBagian(tokens) {
+  const bagian = [];
+  let kini = [];
+  let jenisKini = null;
+  let jenisBerikut = null;
+  for (let k = 0; k < tokens.length; k++) {
+    const t = tokens[k];
+    let jenis = null;
+    let lompat = 0;
+    if (PENGHUBUNG_SERENTAK.has(t)) jenis = "serentak";
+    else if (PENGHUBUNG_URUT_1.has(t)) jenis = "urut";
+    else if (PENGHUBUNG_URUT_2.has(t) && tokens[k + 1] === "itu") { jenis = "urut"; lompat = 1; }
+    if (jenis) {
+      // Penghubung beruntun ("dan habis itu") dilebur; "urut" menang.
+      jenisBerikut = jenisBerikut === "urut" || jenis === "urut" ? "urut" : "serentak";
+      k += lompat;
+      continue;
+    }
+    // (penghubung di awal kalimat - kini masih kosong - diabaikan saja)
+    if (jenisBerikut && kini.length > 0) {
+      bagian.push({ tokens: kini, jenis: jenisKini });
+      kini = [];
+      jenisKini = jenisBerikut;
+    }
+    jenisBerikut = null;
+    kini.push(t);
+  }
+  if (kini.length > 0) bagian.push({ tokens: kini, jenis: jenisKini });
+  return bagian;
+}
+
+/** Adakah penghubung di luar nama modul terdaftar? */
+function adaPenghubung(tokens) {
+  return tokens.some(
+    (t, k) =>
+      PENGHUBUNG_SERENTAK.has(t) ||
+      PENGHUBUNG_URUT_1.has(t) ||
+      (PENGHUBUNG_URUT_2.has(t) && tokens[k + 1] === "itu")
+  );
+}
+
 export function parseKalimat(kalimat, vocab) {
   const bersih = normalisasi(kalimat).replace(/^torang\s+/, "");
-  let tokens = bersih.split(" ").filter(Boolean);
-  if (tokens.length === 0) return { ok: false, error: "kalimat kosong" };
-  tokens = buangPengisi(tokens, (vocab?.aliases ?? []).map((a) => a.alias));
+  const semua = bersih.split(" ").filter(Boolean);
+  if (semua.length === 0) return { ok: false, error: "kalimat kosong" };
+  const aliases = (vocab?.aliases ?? []).map((a) => a.alias);
+
+  if (!adaPenghubung(semua)) return parseBagian(semua, vocab);
+
+  const bagian = pecahBagian(semua);
+  const hasilMajemuk = parseMajemuk(bagian, vocab);
+  if (hasilMajemuk.ok) return hasilMajemuk;
+
+  // Nama modul yang kebetulan mengandung penghubung ("tanya dan jawab")?
+  // Hanya dicoba kalau memang ada alias seperti itu - kalau tidak, kalimat
+  // tunggal akan diam-diam mengabaikan ekor kalimat ("pindah ke layar 2 lalu
+  // ke layar 3" terbaca "pindah ke layar 2" saja).
+  if (aliases.some((a) => adaPenghubung(a.split(" ")))) {
+    const tunggal = parseBagian(semua, vocab);
+    if (tunggal.ok) return tunggal;
+  }
+  return hasilMajemuk;
+}
+
+function parseMajemuk(bagian, vocab) {
+  if (bagian.length > MAKS_BAGIAN) {
+    return {
+      ok: false,
+      error: `terlalu panjang: ${bagian.length} perintah dalam satu kalimat, paling banyak ${MAKS_BAGIAN}. Untuk mengatur banyak layar sekaligus pakai "tata <nama>"`,
+    };
+  }
+  const tahap = [];
+  const rincian = [];
+  let mirip;
+  let sebelumnya = null;
+  for (let k = 0; k < bagian.length; k++) {
+    let tok = bagian[k].tokens;
+    if (tok[0] === "torang") tok = tok.slice(1); // "..., lalu Torang pindah ..."
+    // "pindah ke layar 2 lalu ke layar 3" / "... lalu layar 3": kata kerja
+    // dihilangkan, dipinjam dari bagian sebelumnya - HANYA untuk pindah.
+    if (sebelumnya?.intent === "MOVE") {
+      const t2 = tok[0] === "ke" ? tok.slice(1) : tok;
+      const tgt = bacaTarget(t2);
+      if (tgt && tgt[1] === t2.length) tok = ["pindah", ...tok];
+    }
+    const teks = tok.join(" ");
+    const h = parseBagian(tok, vocab);
+    if (!h.ok) return { ok: false, error: `bagian ${k + 1} ("${teks}"): ${h.error}` };
+    if (HARUS_SENDIRI[h.intent.intent]) {
+      return {
+        ok: false,
+        error: `"${HARUS_SENDIRI[h.intent.intent]}" harus diucapkan sendiri, tidak bisa digabung dengan perintah lain`,
+      };
+    }
+    if (h.intent.intent === "TATA") {
+      return { ok: false, error: '"tata" mengatur semua layar sekaligus - ucapkan sendiri, tanpa digabung' };
+    }
+    if (h.mirip && !mirip) mirip = h.mirip;
+    if (k === 0 || bagian[k].jenis === "urut") tahap.push([h.intent]);
+    else tahap[tahap.length - 1].push(h.intent);
+    rincian.push({ teks, intent: h.intent, jenis: k === 0 ? null : bagian[k].jenis });
+    sebelumnya = h.intent;
+  }
+  if (rincian.length === 1) {
+    return { ok: true, intent: rincian[0].intent, ...(mirip ? { mirip } : {}) };
+  }
+  return {
+    ok: true,
+    intent: { intent: "MAJEMUK", tahap },
+    bagian: rincian,
+    ...(mirip ? { mirip } : {}),
+  };
+}
+
+/** Kata benda yang boleh menyela kata kerja dan nama: "puter VIDEO tes". */
+const KATA_BENDA_MATERI = new Set(["video", "modul"]);
+
+/** Satu perintah (satu bagian kalimat). Token sudah dinormalisasi. */
+function parseBagian(tokensMentah, vocab) {
+  let tokens = buangPengisi(tokensMentah, (vocab?.aliases ?? []).map((a) => a.alias));
   if (tokens.length === 0) return { ok: false, error: "kalimat kosong" };
 
   const aksi = tokens[0];
@@ -302,45 +448,91 @@ export function parseKalimat(kalimat, vocab) {
     };
   }
 
-  if (aksi === "puter" || aksi === "putar") {
-    let t = sisa[0] === "video" ? sisa.slice(1) : sisa;
-    const posDi = t.lastIndexOf("di");
-    if (posDi < 1) {
-      return { ok: false, error: "format: \"puter video <nama modul> di <target>\"" };
+  if (aksi === "tata") {
+    const nama = sisa.join(" ");
+    if (!/^[a-z0-9]+( [a-z0-9]+)?$/.test(nama)) {
+      return { ok: false, error: 'tata yang mana? (contoh: "tata pembukaan")' };
     }
-    const aliasKata = t.slice(0, posDi).join(" ");
-    const target = bacaTarget(t.slice(posDi + 1));
-    if (!target) return { ok: false, error: `target tidak dikenal: "${t.slice(posDi + 1).join(" ")}"` };
+    const daftar = vocab?.tata;
+    if (Array.isArray(daftar) && daftar.length > 0 && !daftar.includes(nama)) {
+      const cocok = cocokkanAlias(nama, daftar);
+      if (cocok && !cocok.ambigu) {
+        return { ok: true, intent: { intent: "TATA", nama: cocok.alias }, ...(cocok.samar ? { mirip: { didengar: nama, dipakai: cocok.alias } } : {}) };
+      }
+      return { ok: false, error: `tata "${nama}" tidak ada. Tersedia: ${daftar.join(", ")}` };
+    }
+    return { ok: true, intent: { intent: "TATA", nama } };
+  }
 
+  if (aksi === "puter" || aksi === "putar" || aksi === "tampilkan") {
+    const t = KATA_BENDA_MATERI.has(sisa[0]) ? sisa.slice(1) : sisa;
+    if (t.length === 0) {
+      return { ok: false, error: `${aksi} apa? (contoh: "${aksi} tes di layar satu")` };
+    }
+    // Sasaran BOLEH tidak disebut: diputar di layar tempat Torang berada
+    // (keputusan Hadi 24 Sep 2026) - cloud yang tahu Torang di mana.
+    const posDi = t.lastIndexOf("di");
+    let namaKata, target = null;
+    if (posDi >= 1) {
+      namaKata = t.slice(0, posDi).join(" ");
+      target = bacaTarget(t.slice(posDi + 1));
+      if (!target || target[1] !== t.length - posDi - 1) {
+        return { ok: false, error: `target tidak dikenal: "${t.slice(posDi + 1).join(" ")}"` };
+      }
+    } else if (posDi === 0) {
+      return { ok: false, error: `format: "${aksi} <nama> di <target>"` };
+    } else {
+      namaKata = t.join(" ");
+    }
+
+    // "tampilkan" melayani modul DAN scene: nama modul menang kalau persis,
+    // lalu nama scene persis, baru kemiripan nama modul. Nama modul & scene
+    // yang sama dilarang saat pendaftaran - di sini urutan cuma jaring terakhir.
+    const scenes = Array.isArray(vocab?.scenes) ? vocab.scenes : ["office"];
     const aliases = (vocab?.aliases ?? []).map((a) => a.alias.toLowerCase());
+    const namaScene = namaKata.split(" ").join("-");
+    if (aksi === "tampilkan" && !aliases.includes(namaKata) && scenes.includes(namaScene)) {
+      if (!target) {
+        return { ok: false, error: `${namaKata} ditampilkan di layar berapa? (contoh: "tampilkan ${namaKata} di layar dua")` };
+      }
+      if (!(target[0].startsWith("tv") || target[0] === "all_tv")) {
+        return { ok: false, error: "scene hanya untuk TV (tv1..tv4 atau semua layar)" };
+      }
+      return { ok: true, intent: { intent: "OPEN_SCENE", scene: namaScene, target: target[0] } };
+    }
+
+    const denganTarget = (alias) =>
+      target ? { intent: "PLAY_MODULE", alias, target: target[0] } : { intent: "PLAY_MODULE", alias };
+
     if (aliases.length === 0) {
       // Tanpa daftar alias (cloud tidak terjangkau), alias diteruskan apa adanya;
       // cloud yang akan menolak kalau memang tidak ada.
-      return { ok: true, intent: { intent: "PLAY_MODULE", alias: aliasKata, target: target[0] } };
+      return { ok: true, intent: denganTarget(namaKata) };
     }
 
-    const cocok = cocokkanAlias(aliasKata, aliases);
+    const cocok = cocokkanAlias(namaKata, aliases);
     if (!cocok) {
+      const tambahan = aksi === "tampilkan" ? ` · scene: ${scenes.join(", ")}` : "";
       return {
         ok: false,
-        error: `modul "${aliasKata}" tidak ada di manifest. Tersedia: ${aliases.join(", ")}`,
+        error: `modul "${namaKata}" tidak ada di manifest. Tersedia: ${aliases.join(", ")}${tambahan}`,
       };
     }
     if (cocok.ambigu) {
       return {
         ok: false,
-        error: `modul "${aliasKata}" sama dekatnya dengan ${cocok.ambigu.map((a) => `"${a}"`).join(" dan ")} - ulangi dengan lebih jelas`,
+        error: `modul "${namaKata}" sama dekatnya dengan ${cocok.ambigu.map((a) => `"${a}"`).join(" dan ")} - ulangi dengan lebih jelas`,
       };
     }
     return {
       ok: true,
-      intent: { intent: "PLAY_MODULE", alias: cocok.alias, target: target[0] },
-      ...(cocok.samar ? { mirip: { didengar: aliasKata, dipakai: cocok.alias } } : {}),
+      intent: denganTarget(cocok.alias),
+      ...(cocok.samar ? { mirip: { didengar: namaKata, dipakai: cocok.alias } } : {}),
     };
   }
 
   return {
     ok: false,
-    error: `aksi tidak dikenal: "${aksi}". Kosakata: puter, pindah, buka, tutup, lanjut, ulang, stop, sapa, glow`,
+    error: `aksi tidak dikenal: "${aksi}". Kosakata: puter, tampilkan, pindah, buka, tutup, tata, lanjut, ulang, stop, sapa, glow`,
   };
 }

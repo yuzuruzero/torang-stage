@@ -16,11 +16,17 @@ Semua boleh diawali "Torang, …" atau langsung ke kata aksinya.
 | Ucapkan | Yang terjadi |
 |---|---|
 | **puter tes di TV satu** | materi modul `tes` tayang di TV1 |
+| **puter tes** | tayang di layar **tempat Torang sedang berada** (TV1 kalau Torang belum muncul) |
+| **tampilkan modul tes di TV satu** | sama dengan "puter" |
 | **puter tes di semua layar** | tayang serentak di 4 TV |
 | **puter tes di komp lima** | tayang di komputer murid nomor 5 |
 
 Ganti `tes` dengan nama modul lain yang sudah terdaftar. Daftar nama yang sah
-ada di dropdown modul pada panel guru.
+ada di pilihan tiap kotak TV pada panel guru.
+
+Kalau Torang sedang di layar lain, ia **pindah dulu**: keluar dari layar lama,
+masuk ke layar tujuan, baru materinya diputar. Guru tidak perlu mengucapkan
+"pindah" lebih dulu.
 
 ## Memindahkan Torang
 
@@ -42,10 +48,52 @@ Arah keluar-masuk dihitung sendiri oleh sistem. Guru tidak perlu memikirkannya.
 | Ucapkan | Yang terjadi |
 |---|---|
 | **buka office di TV tiga** | TV3 menampilkan pixel office |
-| **tutup TV tiga** | TV3 kembali ke idle |
+| **tampilkan office di TV tiga** | sama dengan "buka" |
+| **tutup TV tiga** | TV3 kembali ke idle (kalau Torang di sana, Torang pamit) |
 
 Selama sebuah TV menampilkan office, Torang tidak bisa dipindahkan ke situ.
 Tutup dulu kalau layar itu mau dipakai.
+
+## Beberapa layar dalam satu kalimat
+
+Paling banyak **tiga perintah** dalam satu kalimat. Dua kata penghubung, dua arti:
+
+| Penghubung | Artinya | Contoh |
+|---|---|---|
+| **dan** | **bersamaan** | **tampilkan modul tes di TV satu dan tampilkan office di TV dua** |
+| **lalu** / **habis itu** / **setelah itu** | **berurutan** — perintah berikutnya menunggu video sebelumnya **selesai** | **pindah ke TV dua habis itu ke TV tiga** |
+
+- Pada "pindah", kata kerjanya boleh tidak diulang: *"pindah ke TV dua lalu TV tiga"*.
+- Kalau satu bagian salah, **seluruh kalimat ditolak** — tidak ada yang setengah jalan.
+- **stop, lanjut, ulang, buka window, dan tata** harus diucapkan sendiri.
+- Satu layar tidak boleh disebut dua kali dalam satu kalimat, dan hanya satu
+  perintah yang boleh memindahkan Torang (Torang cuma ada satu).
+- Langkah yang sedang menunggu tampil di panel. **stop** membatalkannya; tombol
+  "Batalkan langkah yang menunggu" membatalkan tanpa menghentikan tayangan.
+
+## Tata layar (keempat TV sekaligus)
+
+| Ucapkan | Yang terjadi |
+|---|---|
+| **tata pembukaan** | keempat TV diatur sesuai preset "pembukaan" |
+
+Preset dibuat dan disunting di kartu **Tata layar** pada panel guru: pilih isi
+tiap TV (modul, scene, kosongkan, atau biarkan), beri nama satu-dua kata, simpan.
+Nama baru langsung bisa diucapkan (setelah `buat-grammar` dijalankan bila grammar
+dinyalakan — lihat catatan di bawah).
+
+## Konfirmasi 1 detik
+
+Setelah mesin menangkap perintah, kalimatnya tampil besar di panel selama
+**1 detik** sebelum dijalankan:
+
+- **Salah tangkap?** Tekan **tombol bicara lagi** (atau tombol **✕ BATAL** di panel).
+  Tidak ada yang dikirim.
+- **Mau langsung?** Tekan **tombol ya** (F9) untuk mengirim tanpa menunggu.
+
+Jeda ini ada karena "komp enam" dan "komp enam belas" sama-sama kalimat sah —
+parser tidak bisa menolak salah dengar yang sah. Lamanya bisa diatur di config
+(`voice.konfirmasi_ms`; 0 = mati).
 
 ## Jalannya pertunjukan
 
@@ -75,9 +123,12 @@ Jendela yang masih hidup tidak terganggu. Aman diucapkan kapan saja.
 
 ## Yang TIDAK dikenali
 
-- Kata sopan: ~~"tolong sapa komp enam"~~ → cukup **"sapa komp enam"**
 - Kalimat bebas: ~~"coba tampilkan videonya dong"~~
-- Nama modul yang belum terdaftar
+- Nama modul atau tata yang belum terdaftar
+- Lebih dari tiga perintah dalam satu kalimat → pakai **tata**
+
+Kata sopan di awal/akhir kalimat ("tolong", "coba", "dong") **boleh** sejak
+18 Sep 2026 — dibuang sebelum diperiksa, tidak mengubah arti.
 
 Kalau ditolak, panggung memberi tahu kata apa yang tidak dikenali beserta
 daftar kata yang sah. Ulangi dengan kalimat baku — jangan diulang lebih keras.
@@ -94,6 +145,14 @@ Tiga hal terpenting selalu bisa lewat papan ketik, dari mana saja di mesin guru:
 
 Panel operator juga punya semua tombolnya. Suara adalah kenyamanan, bukan
 satu-satunya jalan.
+
+## Catatan untuk operator: grammar & nama baru
+
+Kalau grammar Whisper dinyalakan (`voice.grammar: true`), Whisper hanya bisa
+menuliskan nama modul, scene, dan tata yang tercantum di `tools\voice\torang.gbnf`.
+Setelah mendaftarkan modul baru atau menyimpan tata baru, jalankan
+`node tools\voice\buat-grammar.mjs` (cloud harus hidup) supaya nama itu bisa
+diucapkan.
 
 ## Keputusan 18 Sep 2026: "TV" tetap bentuk resmi
 

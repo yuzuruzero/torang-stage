@@ -90,4 +90,45 @@ void window.torang.studentBoot().then((b) => {
   void muatKursi();
 });
 
+// ---------------------------------------------------------------------------
+// Saklar mode video (24 Sep 2026). Bawaan: video diputar prosesor (D21).
+// Mode cadangan memakai kartu grafis - untuk PC yang justru tersendat dengan
+// mode normal. Mengganti = simpan di PC ini + app membuka ulang dirinya.
+// ---------------------------------------------------------------------------
+function pasangSaklarVideo(pesanKonfirmasi: string): void {
+  const cb = document.getElementById("saklarVideo") as HTMLInputElement | null;
+  const ket = document.getElementById("saklarVideoKet");
+  if (!cb || !ket) return;
+  const tulis = () => {
+    ket.textContent = cb.checked
+      ? "Sekarang: mode CADANGAN (kartu grafis)"
+      : "Sekarang: mode normal (disarankan)";
+  };
+  void window.torang.modeVideo().then((m) => {
+    cb.checked = m.kartu_grafis;
+    tulis();
+  });
+  cb.onchange = async () => {
+    const mau = cb.checked;
+    if (!confirm(pesanKonfirmasi)) {
+      cb.checked = !mau;
+      return;
+    }
+    cb.disabled = true;
+    ket.textContent = "menyimpan & membuka ulang\u2026";
+    const r = await window.torang.gantiModeVideo(mau);
+    if (!r.ok) {
+      cb.checked = !mau;
+      cb.disabled = false;
+      ket.textContent = `\u26a0 ${r.error ?? "gagal menyimpan"}`;
+    }
+  };
+}
+
+pasangSaklarVideo(
+  "Ganti mode video? Jendela ini akan ditutup lalu dibuka lagi, dan kamu perlu " +
+    "mengetik namamu sekali lagi."
+);
+
+
 export {};

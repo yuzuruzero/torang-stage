@@ -22,6 +22,9 @@ export interface VoiceConfig {
   /** Uji tanpa mic: tombol PTT memutar berkas ini lewat rantai yang sama.
    *  Kosongkan untuk pemakaian sungguhan. */
   berkas_uji: string;
+  /** Jeda konfirmasi (ms) sebelum perintah suara dikirim: transkrip tampil di
+   *  panel dan bisa DIBATALKAN (PTT lagi / tombol Batal). 0 = langsung kirim. */
+  konfirmasi_ms: number;
 }
 
 export interface TheaterConfig {
@@ -94,6 +97,7 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
       mic: "",
       tombol_ya: "F9",
       berkas_uji: "",
+      konfirmasi_ms: 1000,
     },
   };
   // --config=path CLI (aman untuk PowerShell/cmd, tanpa env var)

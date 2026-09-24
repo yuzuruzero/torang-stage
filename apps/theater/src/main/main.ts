@@ -19,6 +19,8 @@ import { CloudClient } from "./ws-client.js";
 import { loadAssetMap, resolveAssetUrl } from "./assets.js";
 import { StudentController } from "./student.js";
 import { Voice, type StatusVoice } from "./voice.js";
+import { pasangIpcTata } from "./panel-tata.js";
+import { terapkanModeVideo, pasangIpcModeVideo } from "./mode-video.js";
 
 const DIST_DIR = __dirname; // dist/
 const APP_ROOT = path.resolve(DIST_DIR, "..");
@@ -51,6 +53,26 @@ app.setPath(
     cfg.mode === "student" ? `student-${cfg.seat ?? "tanpa-kursi"}` : "teacher"
   )
 );
+
+// ---------------------------------------------------------------------------
+// Pemutaran video lancar (D21, temuan 22 Sep 2026 di PC guru baru RTX 5070)
+//
+// Decoder video hardware NVIDIA (D3D11) di PC itu cuma ~10 fps: klip 2 dtk
+// selesai 3,5-14 dtk (terburuk 104 dtk). Decoder software (FFmpeg di CPU)
+// menyelesaikannya: 2.001-2.006 ms, 0 frame jatuh, dalam kondisi kelas.
+// Bawaan = software; PC yang justru tersendat bisa pindah ke "mode video
+// cadangan" (kartu grafis) lewat TOMBOL di panel guru / jendela login murid
+// (mode-video.ts). Setelah userData ditetapkan: pilihan disimpan per peran.
+// ---------------------------------------------------------------------------
+const modeVideo = terapkanModeVideo();
+pasangIpcModeVideo();
+// Anti-throttling: window TV hampir selalu di BELAKANG panel yang sedang
+// fokus. Bukan penyebab utama tersendat (raf tetap 60/dtk), tapi dipertahankan
+// karena benar untuk kiosk: Chromium tidak boleh memperlambat window yang
+// tertutup/di latar. Pasangannya: backgroundThrottling:false di windows.ts.
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 
 // ---------------------------------------------------------------------------
 // Jendela + agregasi ACK
@@ -382,6 +404,7 @@ ipcMain.on("tv:event", (_e, ev: { cue_id: string; tv: string; status: string; de
 ipcMain.on("panel:intent", (_e, intent: Record<string, unknown>) => {
   void sendIntent(intent);
 });
+pasangIpcTata(cfg); // simpan/hapus preset tata layar dari panel (24 Sep 2026)
 
 async function postRoster(pathname: string, body: Record<string, unknown>): Promise<void> {
   try {
@@ -535,7 +558,8 @@ app.whenReady().then(() => {
   }, 1500);
 
   console.log(
-    `[theater] mode=${cfg.mode} endpoint=${cfg.endpoint_id} cloud=${cfg.cloud_api} aset=${cfg.assets_dir}`
+    `[theater] mode=${cfg.mode} endpoint=${cfg.endpoint_id} cloud=${cfg.cloud_api} aset=${cfg.assets_dir}` +
+      ` video=${modeVideo.kartu_grafis ? "cadangan (kartu grafis)" : "normal (prosesor)"}`
   );
 });
 

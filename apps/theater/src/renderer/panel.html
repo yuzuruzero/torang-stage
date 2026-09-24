@@ -2,132 +2,362 @@
 <html lang="id">
 <head>
 <meta charset="utf-8" />
-<title>Panel Operator — Panggung Torang</title>
+<title>Panel Guru — Panggung Torang</title>
 <style>
-  :root { --bg:#101528; --card:#1a2140; --line:#2c3564; --txt:#e8ebff; }
-  body { margin:0; font:14px/1.5 system-ui, "Segoe UI", sans-serif; background:var(--bg); color:var(--txt); padding:18px; }
-  h1 { font-size:16px; margin:0 0 12px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
-  .card h2 { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#9fa8d8; margin:0 0 8px; }
-  button { background:#2b3a7e; color:#fff; border:1px solid #40509e; border-radius:8px; padding:10px 14px; margin:0 6px 6px 0; cursor:pointer; font-size:14px; }
-  button:hover { background:#37489c; }
-  button.stop { background:#7e2b2b; border-color:#9e4040; }
-  select { background:#141a36; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:13px; margin:0 6px 6px 0; }
-  .murid-baris { display:inline-block; background:#141a36; border:1px solid var(--line); border-radius:8px; padding:4px 10px; margin:0 6px 6px 0; font-size:13px; color:var(--txt); }
-  .murid-baris .on { color:#43d17c; }
-  .murid-baris .off { color:#7580b3; }
-  .murid-baris .lepas { color:#ff8d7d; cursor:pointer; margin-left:4px; font-size:11px; }
-  .murid-baris .lepas:hover { color:#ff5540; }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:99px; margin-right:6px; }
-  .dot.online { background:#43d17c; } .dot.offline { background:#d14343; }
-  .muted { color:#7580b3; font-size:12px; }
-  #note { color:#ffd97d; min-height:1.3em; }
-  code { color:#9fe; font-size:12px; }
-  kbd { background:#0d1122; border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-size:12px; }
-  /* --- indikator voice: harus terbaca dari jarak guru-ke-layar --- */
-  .vpill { display:inline-block; border-radius:999px; padding:6px 16px; font-size:18px; font-weight:700; letter-spacing:.04em; border:1px solid transparent; }
-  .vpill.mati { background:#232a4d; color:#7580b3; border-color:#2c3564; }
-  .vpill.diam { background:#14331f; color:#43d17c; border-color:#1f6b3d; }
-  .vpill.merekam { background:#3d1414; color:#ff6a58; border-color:#8a2d2d; animation:vdenyut 1s ease-in-out infinite; }
-  .vpill.memproses { background:#3a3112; color:#ffd97d; border-color:#8a742d; }
-  @keyframes vdenyut { 0%,100% { opacity:1 } 50% { opacity:.45 } }
-  #vdengar { font-size:17px; margin-top:8px; min-height:1.4em; }
-  #vdengar .kutip { color:#e8ebff; }
-  #vhasil { margin-top:4px; font-size:14px; min-height:1.4em; }
-  #vhasil .ok { color:#43d17c; }
-  #vhasil .tolak { color:#ff8d7d; }
-  #vmirip { margin-top:4px; font-size:13px; color:#ffd97d; }
-  #vsaran { margin-top:8px; font-size:16px; display:none; background:#2a2412; border:1px solid #8a742d; border-radius:8px; padding:8px 12px; }
-  #vsaran.tampil { display:block; }
-  #vsaran b { color:#ffd97d; }
-  #vsaran .tekan { color:#9fa8d8; font-size:13px; }
-  #vriwayat { margin-top:10px; font-size:12px; color:#7580b3; line-height:1.7; }
-  #vriwayat .r-ok { color:#43d17c; } #vriwayat .r-tolak { color:#ff8d7d; }
-  /* --- daftar video jadi modul --- */
-  #lepas { border:2px dashed var(--line); border-radius:10px; padding:16px; text-align:center; color:#7580b3; font-size:14px; transition:.15s; }
-  #lepas.hover { border-color:#43d17c; background:#14331f; color:#a9f5c6; }
-  .vb-baris { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#141a36; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-top:8px; }
-  .vb-nama { flex:1 1 220px; font-size:13px; word-break:break-all; }
-  .vb-baris input { background:#0d1122; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:13px; width:150px; }
-  .vb-baris button { margin:0; padding:6px 12px; font-size:13px; }
-  .vb-dur { color:#7580b3; font-size:12px; }
-  .vb-galat { color:#ff8d7d; font-size:12px; flex-basis:100%; }
-  .vb-ok { color:#43d17c; font-size:13px; }
+  :root {
+    --bg:#0e1330; --kolom:#141b42; --kotak:#1b2454; --kotak2:#212c63; --garis:#2a3674;
+    --teks:#eef0ff; --redup:#8e98c9; --label:#e0b44a; --emas:#e6b43c; --hijau:#3fcf8e;
+    --merah:#e05252; --biru:#6fa8ff; --tebal:#0a0f28;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font:14px/1.45 system-ui, "Segoe UI", sans-serif; background:var(--bg); color:var(--teks);
+         display:flex; flex-direction:column; min-height:100vh; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .redup { color:var(--redup); font-size:12px; }
+  .judul { color:var(--label); font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; margin:0; }
+  .subjudul { color:var(--redup); font-size:12px; margin:2px 0 12px; }
+
+  /* ---------- bilah atas ---------- */
+  header { display:flex; align-items:center; gap:14px; padding:12px 18px; border-bottom:1px solid var(--garis); background:#111842; flex-wrap:wrap; }
+  .logo { width:30px; height:30px; border-radius:7px; background:var(--emas); color:#1b1400; font-weight:900; display:grid; place-items:center; font-size:18px; }
+  .nama-app { font-weight:800; font-size:17px; letter-spacing:.02em; }
+  .batch { color:var(--redup); font-size:13px; }
+  .versi { color:var(--redup); font-size:12px; font-weight:600; margin-left:4px; }
+  .kanan { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .pil { background:#1d2660; border:1px solid var(--garis); border-radius:99px; padding:5px 12px; font-size:12px; font-weight:700; white-space:nowrap; }
+  .pil.ok { color:#cfe0ff; } .pil.buruk { background:#4a1d1d; border-color:#8a3434; color:#ffb0a8; }
+  .pil.voice-diam { background:#16402c; border-color:#236b47; color:#8ff0bf; }
+  .pil.voice-merekam { background:#5a4210; border-color:#a37a1e; color:#ffd77a; }
+  .pil.voice-mati { color:var(--redup); }
+  .tombol-alat { background:#1d2660; border:1px solid var(--garis); border-radius:99px; padding:5px 12px; font-size:12px; font-weight:700; }
+  .tombol-stop-atas { background:var(--merah); border:0; border-radius:10px; padding:8px 18px; font-weight:800; color:#fff; letter-spacing:.04em; }
+
+  /* ---------- tiga kolom ---------- */
+  main { flex:1; display:grid; grid-template-columns: minmax(250px,1fr) minmax(420px,1.75fr) minmax(260px,1.05fr); gap:14px; padding:14px 18px; align-items:start; }
+  @media (max-width: 1250px) { main { grid-template-columns: minmax(240px,1fr) minmax(400px,1.6fr); } #kolKanan { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:14px; } }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } #kolKanan { grid-template-columns:1fr; } }
+  .kolom { background:var(--kolom); border:1px solid var(--garis); border-radius:12px; padding:16px; }
+  #kolKanan > .kolom + .kolom { margin-top:0; }
+  @media (min-width: 1251px) { #kolKanan { display:flex; flex-direction:column; gap:14px; } }
+
+  /* rundown */
+  .langkah { display:flex; gap:10px; align-items:flex-start; background:var(--kotak); border:1px solid transparent; border-radius:9px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
+  .langkah:hover { border-color:var(--garis); }
+  .langkah .no { color:var(--redup); font-weight:700; font-size:13px; min-width:20px; padding-top:1px; }
+  .langkah .isi { flex:1; min-width:0; }
+  .langkah .lbl { font-weight:700; font-size:14px; }
+  .langkah .alias { color:var(--redup); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .langkah .tanda { font-size:11px; font-weight:800; border-radius:99px; padding:3px 10px; align-self:center; }
+  .langkah.selesai .tanda { color:var(--hijau); font-size:15px; padding:0 2px; }
+  .langkah.tayang { border-color:var(--emas); background:#26305f; }
+  .langkah.tayang .tanda { background:var(--emas); color:#231800; }
+  .langkah.berikut .tanda { border:1px solid var(--garis); color:var(--redup); }
+  .langkah .jalankan { display:none; margin-top:8px; background:var(--hijau); color:#062b1a; border:0; border-radius:7px; padding:5px 12px; font-weight:800; font-size:12px; }
+  .langkah.dipilih .jalankan { display:inline-block; }
+  .rundown-kaki { display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
+  .tautan { background:none; border:0; color:var(--biru); font-size:12px; padding:0; }
+
+  /* ruangan */
+  .baris-tv { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+  .baris-bawah { display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:12px; align-items:stretch; margin-top:14px; }
+  .tv { background:var(--kotak); border:1.5px solid var(--garis); border-radius:10px; padding:10px 14px; min-height:74px; cursor:pointer; text-align:left; width:100%; }
+  .tv:hover { border-color:#4a58a6; }
+  .tv .kepala { font-weight:800; font-size:14px; }
+  .tv .status { color:var(--redup); font-size:12px; margin-top:2px; }
+  .tv.torang { border-color:var(--emas); background:#283574; }
+  .tv.torang .status { color:#ffd77a; }
+  .tv.scene .status { color:var(--biru); }
+  .tv .lencana { display:inline-block; margin-top:6px; background:var(--emas); color:#231800; font-size:10px; font-weight:900; border-radius:99px; padding:2px 10px; letter-spacing:.06em; }
+  .tv .bilah { height:4px; border-radius:9px; background:#2a3674; margin-top:6px; overflow:hidden; }
+  .tv .bilah i { display:block; height:100%; background:var(--emas); }
+  .label-baris { color:var(--redup); font-size:11px; font-weight:800; letter-spacing:.14em; margin:14px 0 6px; }
+  .kursi-grid { display:grid; grid-template-columns:repeat(10, 1fr); gap:7px; }
+  .kursi { background:var(--kotak); border:1.5px solid var(--garis); border-radius:8px; padding:6px 0 4px; text-align:center; cursor:pointer; min-width:0; }
+  .kursi:hover { border-color:#4a58a6; }
+  .kursi .n { font-weight:800; font-size:14px; }
+  .kursi .d { display:block; width:7px; height:7px; border-radius:99px; background:#56608f; margin:3px auto 0; }
+  .kursi.online .d { background:var(--hijau); }
+  .kursi.offline { opacity:.55; }
+  .kursi .nm { display:block; font-size:9px; color:var(--redup); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; padding:0 3px; height:12px; }
+  .kursi.bernama { border-color:#3d4c97; }
+  .tata-tengah { display:flex; flex-direction:column; justify-content:center; gap:6px; background:#18204d; border:1px dashed var(--garis); border-radius:10px; padding:8px 10px; }
+  .tata-tengah .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip-tata { background:#26305f; border:1px solid #3d4c97; border-radius:99px; padding:3px 10px; font-size:12px; font-weight:700; }
+  .terisi { margin-top:14px; background:var(--kotak); border:1px solid var(--garis); border-radius:10px; padding:10px 14px; }
+  .terisi .atas { display:flex; justify-content:space-between; font-weight:800; }
+  .terisi .angka { color:var(--emas); font-size:16px; }
+  .terisi .bar { height:8px; background:#0c1233; border-radius:99px; margin:8px 0 4px; overflow:hidden; }
+  .terisi .bar i { display:block; height:100%; background:var(--hijau); border-radius:99px; }
+  .antrean { margin-top:12px; background:#15352a; border:1px solid #2a6a4c; border-radius:10px; padding:8px 12px; display:none; font-size:13px; }
+  .antrean.tampil { display:block; }
+  .antrean ol { margin:4px 0 6px 18px; padding:0; }
+  .catatan-kuning { color:#e8b64a; font-size:12px; margin-top:10px; min-height:1.3em; }
+  .galat { color:#ff9c90; font-size:12px; margin-top:6px; }
+
+  /* kanan */
+  .cue { background:var(--kotak); border-radius:9px; padding:8px 12px; margin-bottom:7px; display:grid; grid-template-columns:auto 1fr auto; gap:0 10px; align-items:center; }
+  .cue .jam { color:var(--redup); font-size:11px; font-variant-numeric:tabular-nums; }
+  .cue .apa { font-weight:800; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cue .rinci { grid-column:2; color:var(--redup); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cue .ack { grid-row:1 / span 2; grid-column:3; font-size:10px; font-weight:900; border-radius:99px; padding:3px 9px; }
+  .ack.ok { background:#16402c; color:#8ff0bf; } .ack.tunggu { background:#3a3310; color:#ffd77a; } .ack.gagal { background:#4a1d1d; color:#ffb0a8; }
+  .efek { display:flex; align-items:center; justify-content:space-between; background:var(--kotak); border-radius:9px; padding:8px 12px; margin-bottom:7px; font-size:13px; }
+  .efek .tag { color:var(--redup); font-size:10px; margin-left:6px; }
+  .saklar { position:relative; display:inline-block; width:40px; height:22px; flex:0 0 auto; }
+  .saklar input { opacity:0; width:0; height:0; }
+  .saklar span { position:absolute; inset:0; background:#2c3564; border-radius:99px; transition:.15s; cursor:pointer; }
+  .saklar span::before { content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#e8ebff; border-radius:50%; transition:.15s; }
+  .saklar input:checked + span { background:var(--hijau); }
+  .saklar input:checked + span::before { transform:translateX(18px); }
+  .saklar input:disabled + span { opacity:.45; cursor:not-allowed; }
+  .reaksi { display:flex; gap:6px; flex-wrap:wrap; }
+  .reaksi button { background:var(--kotak); border:1px solid var(--garis); border-radius:99px; padding:5px 12px; font-size:12px; font-weight:700; opacity:.5; cursor:not-allowed; }
+
+  /* ---------- bilah bawah: suara ---------- */
+  footer { margin:0 18px 14px; background:var(--kolom); border:1px solid var(--garis); border-radius:12px; padding:14px 18px; display:grid;
+           grid-template-columns:auto 1fr minmax(240px,340px) auto; grid-template-areas:"ptt tr konf aksi"; gap:18px; align-items:center; }
+  .ptt { grid-area:ptt; } .transkrip { grid-area:tr; min-width:0; } .konf { grid-area:konf; } .aksi-besar { grid-area:aksi; }
+  @media (max-width: 1100px) {
+    footer { grid-template-columns:auto 1fr auto; grid-template-areas:"ptt tr tr" "konf konf aksi"; }
+  }
+  @media (max-width: 640px) {
+    footer { grid-template-columns:1fr; grid-template-areas:"ptt" "tr" "konf" "aksi"; }
+  }
+  .ptt { text-align:center; width:96px; }
+  .ptt .bulat { width:74px; height:74px; border-radius:50%; background:#2a3366; margin:0 auto; display:grid; place-items:center; font-weight:900; font-size:13px; color:#c9cff0; border:2px solid transparent; }
+  .ptt .ket { font-size:11px; font-weight:800; margin-top:6px; color:var(--redup); letter-spacing:.04em; }
+  .ptt.diam .bulat { background:#1e4b36; color:#9ff3c9; border-color:#2f7a55; }
+  .ptt.diam .ket { color:var(--hijau); }
+  .ptt.merekam .bulat { background:var(--emas); color:#231800; animation:denyut 1s ease-in-out infinite; }
+  .ptt.merekam .ket { color:var(--emas); }
+  .ptt.memproses .bulat { background:#5a4a1a; color:#ffe39a; }
+  .ptt.konfirmasi .bulat { background:#1f3f7a; color:#cfe0ff; border-color:var(--biru); }
+  @keyframes denyut { 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.06) } }
+  .transkrip .kotak-t { background:var(--tebal); border:1px solid var(--garis); border-radius:10px; padding:10px 16px; font-size:20px; font-weight:800; min-height:50px; margin-top:6px; }
+  .transkrip .kotak-t.kosong { color:var(--redup); font-weight:400; font-size:15px; }
+  .dikenali { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px; font-size:12px; color:var(--redup); }
+  .dikenali .chip { background:#233170; color:#dfe5ff; border-radius:99px; padding:3px 10px; font-weight:700; font-size:12px; }
+  .dikenali .sambung { color:var(--emas); font-weight:800; }
+  .transkrip .tolak { color:#ff9c90; font-size:13px; margin-top:6px; }
+  .transkrip .saran { color:#ffd77a; font-size:13px; margin-top:4px; }
+  .transkrip .petunjuk { color:#e8b64a; font-size:12px; margin-top:8px; }
+  .konf { border:2px solid var(--garis); border-radius:12px; padding:10px 14px; min-height:88px; background:#18215a; }
+  .konf .judul { font-size:11px; }
+  .konf .isi { font-size:17px; font-weight:800; margin:4px 0 2px; overflow-wrap:anywhere; }
+  .konf .bilah { height:5px; background:#0c1233; border-radius:9px; overflow:hidden; margin:6px 0 4px; }
+  .konf .bilah i { display:block; height:100%; background:var(--emas); }
+  .konf.aktif { border-color:var(--emas); background:#25306e; }
+  .konf.terkirim { border-color:#2f7a55; }
+  .konf.batal { border-color:#8a3434; }
+  .aksi-besar { display:flex; flex-direction:column; gap:8px; min-width:150px; }
+  .aksi-besar button { border:0; border-radius:10px; padding:9px 14px; font-weight:800; font-size:14px; }
+  .b-go { background:var(--hijau); color:#062b1a; }
+  .b-ulang { background:#26305f; color:#dfe5ff; }
+  .b-stop { background:#5a1f25; color:#ff9c90; }
+  .b-batal { background:var(--merah); color:#fff; display:none; }
+  .konf.aktif ~ .aksi-besar .b-batal { display:block; }
+
+  /* ---------- popover & laci alat ---------- */
+  .popover { position:fixed; z-index:50; background:#1d2660; border:1px solid #3d4c97; border-radius:10px; padding:6px; min-width:220px; box-shadow:0 12px 30px rgba(0,0,0,.45); display:none; }
+  .popover.tampil { display:block; }
+  .popover .kepala-p { padding:6px 10px 4px; font-weight:800; font-size:13px; }
+  .popover .sub-p { padding:0 10px 6px; font-size:11px; color:var(--redup); }
+  .popover button { display:block; width:100%; text-align:left; background:none; border:0; border-radius:7px; padding:7px 10px; font-size:13px; }
+  .popover button:hover { background:#2a3674; }
+  .popover .pisah { height:1px; background:var(--garis); margin:4px 6px; }
+  .popover .grup { color:var(--redup); font-size:10px; font-weight:800; letter-spacing:.12em; padding:6px 10px 2px; }
+  .laci-latar { position:fixed; inset:0; background:rgba(5,8,25,.55); z-index:60; display:none; }
+  .laci { position:fixed; top:0; right:0; bottom:0; width:min(520px, 94vw); background:var(--kolom); border-left:1px solid var(--garis); z-index:61; overflow:auto; padding:18px; transform:translateX(100%); transition:.2s; }
+  body.laci-buka .laci { transform:none; } body.laci-buka .laci-latar { display:block; }
+  .laci h3 { margin:18px 0 8px; } .laci h3:first-of-type { margin-top:6px; }
+  .laci .blok { background:var(--kotak); border:1px solid var(--garis); border-radius:10px; padding:12px; }
+  .laci select, .laci input[type=text] { background:#141a3e; color:var(--teks); border:1px solid var(--garis); border-radius:8px; padding:7px 9px; font-size:13px; }
+  .laci .btn { background:#2b3a7e; border:1px solid #40509e; border-radius:8px; padding:7px 12px; font-size:13px; margin:4px 6px 0 0; }
+  .laci .btn.merah { background:#6b2626; border-color:#9e4040; }
+  .tata-grid { display:grid; grid-template-columns:auto 1fr; gap:6px 10px; align-items:center; margin:10px 0; }
+  .tata-grid label { color:var(--redup); font-size:12px; }
+  .tata-grid select { width:100%; }
+  #tataPesan.ok { color:var(--hijau); } #tataPesan.galat { color:#ff9c90; }
+  #lepas { border:2px dashed var(--garis); border-radius:10px; padding:14px; text-align:center; color:var(--redup); font-size:13px; }
+  #lepas.hover { border-color:var(--hijau); color:#a9f5c6; }
+  .vb-baris { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#141a3e; border:1px solid var(--garis); border-radius:8px; padding:8px 10px; margin-top:8px; }
+  .vb-nama { flex:1 1 200px; font-size:13px; word-break:break-all; }
+  .vb-baris input { background:#0a0f28; color:var(--teks); border:1px solid var(--garis); border-radius:6px; padding:5px 8px; font-size:13px; width:140px; }
+  .vb-baris button { background:#2b3a7e; border:1px solid #40509e; border-radius:7px; padding:5px 10px; font-size:12px; }
+  .vb-dur { color:var(--redup); font-size:12px; } .vb-galat { color:#ff9c90; font-size:12px; flex-basis:100%; } .vb-ok { color:var(--hijau); font-size:13px; }
+  .saklar-baris { display:flex; gap:12px; align-items:flex-start; }
+  .saklar-video input:checked + span { background:#c08a2d; }
 </style>
 </head>
 <body>
-  <h1>Panel Operator <span class="muted">· Panggung Torang · mode teacher</span></h1>
-
-  <div class="card">
-    <h2>Status</h2>
-    <div><span id="dot" class="dot offline"></span>Cloud: <b id="cloud">menyambung…</b>
-      <span class="muted"> · endpoint <code id="ep">—</code> · v<span id="ver">—</span>
-      · offset jam <span id="off">—</span> ms</span></div>
-    <div class="muted">Cue terakhir: <code id="lastcue">—</code></div>
-    <div id="note"></div>
-  </div>
-
-  <div class="card">
-    <h2>Kendali (jalur cue penuh lewat cloud — sama dengan voice nanti)</h2>
-    <button onclick="intent({intent:'GO'})">▶ GO <span class="muted" id="hkGo"></span></button>
-    <button onclick="intent({intent:'REPLAY'})">↻ Ulang <span class="muted" id="hkUlang"></span></button>
-    <button class="stop" onclick="intent({intent:'STOP'})">■ STOP <span class="muted" id="hkStop"></span></button>
-    <div style="margin-top:6px">
-      <button onclick="intent({intent:'PLAY_MODULE', alias:'tes', target:'tv1'})">Puter “tes” di TV1</button>
-      <button onclick="intent({intent:'MOVE', to:'tv2'})">Pindah TV2</button>
-      <button onclick="intent({intent:'MOVE', to:'tv3'})">Pindah TV3</button>
-      <button onclick="intent({intent:'MOVE', to:'tv4'})">Pindah TV4</button>
-      <button onclick="intent({intent:'MOVE', to:'tv1'})">Pindah TV1</button>
+  <header>
+    <div class="logo">T</div>
+    <div class="nama-app">PANGGUNG TORANG · Panel Guru <span class="versi" id="versiApp"></span></div>
+    <div class="batch" id="batch">menyambung…</div>
+    <div class="kanan">
+      <span class="pil buruk" id="pilVersi" style="display:none"></span>
+      <span class="pil" id="pilCloud">☁ Cloud …</span>
+      <span class="pil" id="pilJam">⏱ Jam …</span>
+      <span class="pil ok" id="pilKonten">▣ Konten …</span>
+      <span class="pil voice-mati" id="pilVoice">🎤 voice mati</span>
+      <button class="tombol-alat" onclick="bukaLaci()">⚙ Alat</button>
+      <button class="tombol-stop-atas" onclick="intent({intent:'STOP'})">■ STOP</button>
     </div>
-    <div style="margin-top:8px">
-      <span class="muted">Window TV hilang?</span>
+  </header>
+
+  <main>
+    <!-- ================= RUNDOWN ================= -->
+    <section class="kolom" id="kolRundown">
+      <h2 class="judul" id="rundownJudul">Rundown</h2>
+      <div class="subjudul">Klik untuk memilih · ▶ untuk menjalankan · urutan bebas</div>
+      <div id="rundownDaftar"><div class="redup">memuat…</div></div>
+      <div class="rundown-kaki">
+        <button class="tautan" onclick="resetRundown()">⟲ ulang rundown dari awal</button>
+        <span class="redup" id="rundownPosisi"></span>
+      </div>
+    </section>
+
+    <!-- ================= RUANGAN ================= -->
+    <section class="kolom" id="kolRuang">
+      <h2 class="judul">Posisi Torang &amp; status ruangan</h2>
+      <div class="subjudul" id="posisiTorang">—</div>
+      <div class="baris-tv">
+        <button class="tv" data-tv="tv1"></button>
+        <button class="tv" data-tv="tv2"></button>
+        <button class="tv" id="kotakOffice"></button>
+      </div>
+      <div class="label-baris">BARIS A</div>
+      <div class="kursi-grid" id="barisA"></div>
+      <div class="label-baris">BARIS B</div>
+      <div class="kursi-grid" id="barisB"></div>
+      <div class="baris-bawah">
+        <button class="tv" data-tv="tv4"></button>
+        <div class="tata-tengah">
+          <div class="redup" style="font-weight:800; letter-spacing:.12em; font-size:10px">TATA LAYAR · “Torang, tata &lt;nama&gt;”</div>
+          <div class="chips" id="tataChips"></div>
+        </div>
+        <button class="tv" data-tv="tv3"></button>
+      </div>
+      <div class="antrean" id="antrean">
+        <b>Menunggu video selesai:</b>
+        <ol id="antreanDaftar"></ol>
+        <button class="tautan" onclick="intent({intent:'BATAL_ANTREAN'})">✕ batalkan langkah yang menunggu</button>
+        <span class="redup">(tayangan yang sedang jalan tidak dihentikan)</span>
+      </div>
+      <div class="galat" id="antreanGalat"></div>
+      <div class="terisi">
+        <div class="atas"><span>Murid masuk kelas</span><span class="angka" id="terisiAngka">0 / 20</span></div>
+        <div class="bar"><i id="terisiBar" style="width:0"></i></div>
+        <div class="redup">Kantor pixel (telemetri agent murid) menyusul di fase 2 — sementara dihitung dari murid yang login.</div>
+      </div>
+      <div class="catatan-kuning" id="note"></div>
+    </section>
+
+    <!-- ================= KANAN ================= -->
+    <div id="kolKanan">
+      <section class="kolom">
+        <h2 class="judul" style="margin-bottom:12px">Riwayat cue</h2>
+        <div id="riwayatCue"><div class="redup">belum ada cue.</div></div>
+      </section>
+      <section class="kolom">
+        <h2 class="judul" style="margin-bottom:12px">Efek otomatis</h2>
+        <div class="efek"><span>Hatch moment (X1)<span class="tag">fase 2</span></span><label class="saklar"><input type="checkbox" disabled checked /><span></span></label></div>
+        <div class="efek"><span>Milestone kantor (X2)<span class="tag">fase 2</span></span><label class="saklar"><input type="checkbox" disabled checked /><span></span></label></div>
+        <div class="efek"><span>Papan progres (X11)<span class="tag">fase 2</span></span><label class="saklar"><input type="checkbox" disabled checked /><span></span></label></div>
+        <div class="efek"><span>Torang ngintip (X14)<span class="tag">fase 2</span></span><label class="saklar"><input type="checkbox" disabled /><span></span></label></div>
+        <h2 class="judul" style="margin:14px 0 8px">Klip reaksi (hotkey F1–F4)</h2>
+        <div class="reaksi" title="aset rx_* belum diproduksi">
+          <button disabled>🤔 mikir</button><button disabled>😤 ngambek</button><button disabled>😂 ketawa</button><button disabled>📝 catat</button>
+        </div>
+        <div class="redup" style="margin-top:6px">Menunggu telemetri (fase 2) &amp; aset klip reaksi.</div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ================= SUARA ================= -->
+  <footer>
+    <div class="ptt mati" id="ptt">
+      <div class="bulat" id="pttBulat">PTT</div>
+      <div class="ket" id="pttKet">VOICE MATI</div>
+    </div>
+    <div class="transkrip">
+      <h2 class="judul" style="color:var(--redup)">Transkrip Whisper (lokal)</h2>
+      <div class="kotak-t kosong" id="transkrip">belum ada ucapan.</div>
+      <div class="dikenali" id="dikenali"></div>
+      <div class="tolak" id="tolak"></div>
+      <div class="saran" id="saran"></div>
+      <div class="petunjuk" id="petunjuk">Hotkey selalu aktif — kalau suara gagal, guru tetap bisa menembak cue tanpa penonton sadar.</div>
+    </div>
+    <div class="konf" id="konf">
+      <h2 class="judul">Konfirmasi 1 detik</h2>
+      <div class="isi" id="konfIsi">—</div>
+      <div class="bilah" id="konfBilahWadah" style="visibility:hidden"><i id="konfBilah"></i></div>
+      <div class="redup" id="konfKet">perintah suara tampil di sini sebelum dijalankan</div>
+    </div>
+    <div class="aksi-besar">
+      <button class="b-batal" onclick="batalVoice()">✕ BATAL (Esc)</button>
+      <button class="b-go" onclick="intent({intent:'GO'})" title="" id="bGo">▶ GO (Spasi)</button>
+      <button class="b-ulang" onclick="intent({intent:'REPLAY'})" id="bUlang">↺ ULANG (R)</button>
+      <button class="b-stop" onclick="intent({intent:'STOP'})" id="bStop">■ STOP (Esc)</button>
+    </div>
+  </footer>
+
+  <!-- ================= popover & laci ================= -->
+  <div class="popover" id="popover"></div>
+  <div class="laci-latar" onclick="tutupLaci()"></div>
+  <aside class="laci">
+    <div style="display:flex; align-items:center">
+      <h2 class="judul">Alat</h2>
+      <button class="tautan" style="margin-left:auto" onclick="tutupLaci()">tutup ✕</button>
+    </div>
+
+    <h3 class="judul" style="color:var(--redup)">Tata layar</h3>
+    <div class="blok">
+      <div style="display:flex; gap:6px; flex-wrap:wrap">
+        <select id="tataPilih" title="preset yang disunting"></select>
+        <input id="tataNama" type="text" placeholder="nama (1–2 kata)" maxlength="40" />
+      </div>
+      <div class="tata-grid">
+        <label for="tata-tv1">TV1 · depan kiri</label><select id="tata-tv1"></select>
+        <label for="tata-tv2">TV2 · depan kanan</label><select id="tata-tv2"></select>
+        <label for="tata-tv3">TV3 · belakang kanan</label><select id="tata-tv3"></select>
+        <label for="tata-tv4">TV4 · belakang kiri</label><select id="tata-tv4"></select>
+      </div>
+      <button class="btn" onclick="tataSimpan()">💾 Simpan</button>
+      <button class="btn merah" id="tataHapusTombol" onclick="tataHapus()">🗑 Hapus</button>
+      <div id="tataPesan" style="font-size:13px; margin-top:6px; min-height:1.3em"></div>
+    </div>
+
+    <h3 class="judul" style="color:var(--redup)">Video baru → modul</h3>
+    <div class="blok">
+      <div id="lepas">Seret berkas video ke sini — atau taruh di folder <code>video-baru\</code> lalu klik Muat ulang</div>
+      <div id="vbDaftar"></div>
+      <button class="btn" onclick="muatInbox()">↻ Muat ulang folder video-baru</button>
+      <span class="redup" id="vbFolder"></span>
+    </div>
+
+    <h3 class="judul" style="color:var(--redup)">Mode video</h3>
+    <div class="blok saklar-baris">
+      <label class="saklar saklar-video" title="mode video cadangan"><input type="checkbox" id="saklarVideo" /><span></span></label>
+      <div><b>Video patah-patah?</b> Nyalakan <b>mode video cadangan</b> (memakai kartu grafis). Aplikasi akan dibuka ulang.
+        <div class="redup" id="saklarVideoKet">memeriksa…</div></div>
+    </div>
+
+    <h3 class="judul" style="color:var(--redup)">Pemulihan</h3>
+    <div class="blok">
       <select id="bukaTv" title="window TV yang mau dibuka ulang">
-        <option value="semua">semua yang hilang</option>
-        <option value="tv1">TV1</option>
-        <option value="tv2">TV2</option>
-        <option value="tv3">TV3</option>
-        <option value="tv4">TV4</option>
+        <option value="semua">semua window TV yang hilang</option>
+        <option value="tv1">TV1</option><option value="tv2">TV2</option>
+        <option value="tv3">TV3</option><option value="tv4">TV4</option>
       </select>
-      <button onclick="bukaTv()">↻ Buka ulang window TV</button>
+      <button class="btn" onclick="bukaTv()">↻ Buka ulang window TV</button>
+      <div style="margin-top:10px">
+        <button class="btn merah" onclick="resetMurid()">⟲ Reset semua murid (kelas baru)</button>
+      </div>
+      <div class="redup" style="margin-top:10px">Endpoint <code id="ep">—</code> · v<span id="ver">—</span> · rundown lengkap & ACK di browser: <code id="panelurl">—</code></div>
     </div>
-    <div style="margin-top:6px">
-      <select id="kursi" title="pilih kursi murid (● = online)"></select>
-      <button onclick="sapaKursi()">👋 Sapa</button>
-      <button onclick="ketukKursi()">🚪 Ketuk (materi)</button>
-      <button onclick="glowKursi()">✨ Glow</button>
-      <button onclick="intent({intent:'GLOW', target:'all_student', preset:'pulse', duration_ms:4000})">✨ Glow semua</button>
-    </div>
-    <div class="muted">Rundown lengkap + status ACK: buka <code id="panelurl">—</code> di browser.</div>
-  </div>
-
-  <div class="card">
-    <h2>Voice command</h2>
-    <div><span id="vpill" class="vpill mati">VOICE MATI</span>
-      <span class="muted" id="vtombol"></span></div>
-    <div id="vdengar" class="muted">belum ada ucapan.</div>
-    <div id="vhasil"></div>
-    <div id="vmirip"></div>
-    <div id="vsaran"></div>
-    <div id="vriwayat"></div>
-  </div>
-
-  <div class="card">
-    <h2>Video baru &rarr; modul</h2>
-    <div id="lepas">Seret berkas video ke sini &mdash; atau taruh di folder <code>video-baru\</code> lalu klik Muat ulang</div>
-    <div id="vbDaftar"></div>
-    <div style="margin-top:8px">
-      <button onclick="muatInbox()" style="padding:6px 10px; font-size:12px">&#8635; Muat ulang folder video-baru</button>
-      <span class="muted" id="vbFolder"></span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Murid online & binding kursi</h2>
-    <div id="daftarMurid" class="muted">memuat…</div>
-    <div style="margin-top:8px">
-      <button class="stop" onclick="resetMurid()" style="padding:6px 10px; font-size:12px">⟲ Reset semua murid (kelas baru)</button>
-    </div>
-  </div>
+  </aside>
 
   <audio id="pa" preload="auto"></audio>
   <script src="./panel.js"></script>

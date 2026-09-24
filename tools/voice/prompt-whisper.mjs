@@ -33,8 +33,8 @@ export function promptWhisper(aliases) {
     .slice(0, 20); // contekan Whisper terbatas (~224 token); nama modul tidak boleh mendesak kosakata inti
   const bagian = [
     "Guru memanggil Torang lalu menyebut perintah panggung dalam bahasa Indonesia.",
-    "Kata kerja yang dipakai: puter, pindah, buka, tutup, lanjut, ulang, stop, sapa, glow.",
-    "Kata penghubung: di, ke, window, video, semua.",
+    "Kata kerja yang dipakai: puter, tampilkan, pindah, buka, tutup, tata, lanjut, ulang, stop, sapa, glow.",
+    "Kata penghubung: di, ke, dan, lalu, habis itu, window, video, modul, semua.",
     "Tempat: TV, layar, komp; bilangan satu sampai dua puluh.",
   ];
   if (modul.length > 0) bagian.push(`Nama modul yang ada: ${modul.join(", ")}.`);

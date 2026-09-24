@@ -21,6 +21,11 @@ export interface CloudConfig {
   cohortPath: string;
   logDir: string;
   ackTimeoutMs: number;
+  /** Berkas preset tata layar (disunting dari panel guru). */
+  tataPath: string;
+  /** Nama scene yang dikenal (kosakata "tampilkan"/"buka"). URL-nya tetap
+   *  dipetakan di mesin guru (D18) - cloud cuma tahu NAMANYA. */
+  scenes: string[];
 }
 
 export function loadConfig(env = process.env): CloudConfig {
@@ -43,6 +48,11 @@ export function loadConfig(env = process.env): CloudConfig {
       env.TORANG_COHORT ?? path.join(APP_ROOT, "config", "cohort-dev.json"),
     logDir: env.TORANG_LOG_DIR ?? path.join(APP_ROOT, "logs"),
     ackTimeoutMs: Number(env.TORANG_ACK_TIMEOUT_MS ?? 3000),
+    tataPath: env.TORANG_TATA ?? path.join(APP_ROOT, "config", "tata-layar.json"),
+    scenes: (env.TORANG_SCENES ?? "office")
+      .split(",")
+      .map((x) => x.trim().toLowerCase())
+      .filter((x) => /^[a-z0-9][a-z0-9_-]{0,31}$/.test(x)),
   };
   fs.mkdirSync(cfg.logDir, { recursive: true });
   return cfg;

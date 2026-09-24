@@ -32,7 +32,7 @@
  * yang sama dengan jalur teks. Tidak ada jalan dari suara ke aksi yang
  * melewatinya, dan kalimat di luar kosakata DITOLAK, tidak dikira-kira.
  */
-import { globalShortcut } from "electron";
+import { globalShortcut, ipcMain } from "electron";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -40,7 +40,7 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 // Parser yang SAMA dengan jalur teks & tes. Kalau ini pernah jadi salinan
 // kedua, dua jalur akan menyimpang diam-diam - dan yang menyimpang adalah
 // bagian yang menentukan apa yang boleh dieksekusi.
-import { parseKalimat, type HasilParse } from "../../../../tools/openclaw/parser.mjs";
+import { parseKalimat, type HasilParse, type VocabParser } from "../../../../tools/openclaw/parser.mjs";
 import { rapikanTranskrip } from "../../../../tools/voice/normalisasi-stt.mjs";
 import { cariSaran } from "../../../../tools/openclaw/saran.mjs";
 // Contekan Whisper yang SAMA dengan torang-dengar & nilai-stt (dulu 3 salinan).
@@ -84,6 +84,18 @@ export interface VoiceConfig {
    * Kosongkan untuk pemakaian sungguhan.
    */
   berkas_uji: string;
+  /**
+   * Jeda konfirmasi sebelum perintah suara dikirim (ms). Bawaan 1000.
+   *
+   * Kenapa WAJIB (surat amandemen #3, 17 Sep): parser menolak kalimat janggal,
+   * tapi tidak bisa menolak kalimat yang SAH namun salah dengar - "komp enam"
+   * dan "komp enam belas" dua-duanya sah. Kalimat majemuk memperbesar taruhan:
+   * satu salah dengar bisa mengubah dua layar sekaligus. Selama jeda ini
+   * transkrip + rinciannya tampil besar di panel, dan guru bisa membatalkan
+   * dengan menekan PTT lagi atau tombol Batal. Tombol "ya" = kirim sekarang.
+   * 0 = langsung kirim (perilaku lama).
+   */
+  konfirmasi_ms: number;
 }
 
 export interface StatusVoice {
@@ -95,6 +107,12 @@ export interface StatusVoice {
   mirip?: { didengar: string; dipakai: string };
   /** Usulan kalimat setelah perintah ditolak - MENUNGGU dibenarkan guru. */
   saran?: { kalimat: string } | null;
+  /** Rincian kalimat majemuk, satu baris per perintah. */
+  bagian?: Array<{ teks: string; intent: Record<string, unknown>; jenis: "serentak" | "urut" | null }>;
+  /** Sedang menunggu konfirmasi: dikirim pada `sampai` (epoch ms) kecuali dibatalkan. */
+  konfirmasi?: { sampai: number; total_ms: number } | null;
+  /** Perintah yang barusan DIBATALKAN guru selama jeda konfirmasi. */
+  dibatalkan?: boolean;
 }
 
 type Kirim = (intent: Record<string, unknown>) => Promise<void>;
@@ -183,7 +201,7 @@ export class Voice {
   private sibuk = false;
   private ffmpeg: string | null = null;
   private ffmpegUbah: string | null = null;
-  private vocab: { aliases?: { alias: string }[] } | null = null;
+  private vocab: VocabParser | null = null;
   /**
    * Alamat cloud disimpan sejak mulai(). Dulu dikirim lewat parameter, dan
    * jalur batas-waktu mengirim null - ucapan yang dihentikan oleh batas waktu
@@ -192,6 +210,8 @@ export class Voice {
    */
   private apiUrl: string | null = null;
   private saranTertunda: { intent: Record<string, unknown>; kalimat: string; sampai: number } | null = null;
+  /** Perintah yang sudah lolos parser dan sedang menunggu jeda konfirmasi. */
+  private menunggu: { selesai: (kirim: boolean) => void } | null = null;
 
   constructor(cfg: VoiceConfig, appRoot: string, kirim: Kirim, lapor: Lapor) {
     this.cfg = cfg;
@@ -262,7 +282,7 @@ export class Voice {
   private async segarkanVocab(apiUrl: string) {
     try {
       const res = await fetch(`${apiUrl}/api/vocab`, { signal: AbortSignal.timeout(1500) });
-      if (res.ok) this.vocab = (await res.json()) as { aliases?: { alias: string }[] };
+      if (res.ok) this.vocab = (await res.json()) as VocabParser;
     } catch { /* pakai daftar terakhir */ }
     return this.vocab;
   }
@@ -317,9 +337,17 @@ export class Voice {
 
     const tombolYa = this.cfg.tombol_ya?.trim();
     if (tombolYa) {
-      const ya = daftarkanTombol(tombolYa, () => { void this.benarkanSaran(); });
+      const ya = daftarkanTombol(tombolYa, () => {
+        if (this.menunggu) { this.kirimSekarang(); return; }
+        void this.benarkanSaran();
+      });
       if (!ya.ok) console.warn(`[voice] tombol ya: ${ya.alasan} - usulan tidak bisa dibenarkan lewat tombol`);
     }
+
+    // Tombol Batal di panel. Didaftarkan di sini (bukan di main.ts) supaya
+    // seluruh perilaku jeda konfirmasi tinggal di satu berkas.
+    ipcMain.removeAllListeners("panel:voice-batal");
+    ipcMain.on("panel:voice-batal", () => this.batalkan());
 
     this.lapor({ keadaan: "diam" });
     const ya = this.cfg.tombol_ya ? `, ${this.cfg.tombol_ya} = ya benar` : "";
@@ -365,6 +393,32 @@ export class Voice {
       fs.rmSync(wav, { force: true });
       this.lapor({ keadaan: "diam" });
     }
+  }
+
+  /** Batalkan perintah yang sedang dalam jeda konfirmasi. */
+  batalkan() {
+    const m = this.menunggu;
+    this.menunggu = null;
+    m?.selesai(false);
+  }
+
+  /** Lewati sisa jeda: kirim sekarang (tombol ya selama konfirmasi). */
+  private kirimSekarang() {
+    const m = this.menunggu;
+    this.menunggu = null;
+    m?.selesai(true);
+  }
+
+  /** Tunggu jeda konfirmasi. true = kirim, false = dibatalkan guru. */
+  private tungguKonfirmasi(): Promise<boolean> {
+    const ms = Math.max(0, Number(this.cfg.konfirmasi_ms ?? 1000));
+    if (ms === 0) return Promise.resolve(true);
+    return new Promise((selesai) => {
+      const pewaktu = setTimeout(() => { this.menunggu = null; selesai(true); }, ms);
+      this.menunggu = {
+        selesai: (kirim) => { clearTimeout(pewaktu); selesai(kirim); },
+      };
+    });
   }
 
   /**
@@ -495,12 +549,32 @@ export class Voice {
       return;
     }
     this.saranTertunda = null;
-    this.lapor({ keadaan: "memproses", didengar: teks, intent: hasil.intent, ms, mirip: hasil.mirip, saran: null });
+    const totalMs = Math.max(0, Number(this.cfg.konfirmasi_ms ?? 1000));
+    this.lapor({
+      keadaan: "memproses", didengar: teks, intent: hasil.intent, ms, mirip: hasil.mirip, saran: null,
+      bagian: hasil.bagian,
+      konfirmasi: totalMs > 0 ? { sampai: Date.now() + totalMs, total_ms: totalMs } : null,
+    });
+    const jadi = await this.tungguKonfirmasi();
+    if (!jadi) {
+      this.lapor({
+        keadaan: "memproses", didengar: teks, intent: null, alasan: "dibatalkan guru",
+        dibatalkan: true, konfirmasi: null, bagian: hasil.bagian,
+      });
+      this.catat({ jenis: "dibatalkan", didengar: teks, intent: hasil.intent, ms });
+      return;
+    }
+    this.lapor({
+      keadaan: "memproses", didengar: teks, intent: hasil.intent, ms, mirip: hasil.mirip,
+      konfirmasi: null, bagian: hasil.bagian,
+    });
     this.catat({ jenis: "diterima", didengar: teks, intent: hasil.intent, ms });
     await this.kirim(hasil.intent);
   }
 
   berhenti() {
+    this.batalkan();
+    ipcMain.removeAllListeners("panel:voice-batal");
     try { globalShortcut.unregister(akselerator(this.cfg.tombol)); } catch { /* */ }
     try { if (this.cfg.tombol_ya) globalShortcut.unregister(akselerator(this.cfg.tombol_ya)); } catch { /* */ }
     if (this.pewaktu) clearTimeout(this.pewaktu);

@@ -21,7 +21,9 @@ export function buatWindowTv(
 ): BrowserWindow {
   const preload = path.join(distDir, "preload.cjs");
   const common = {
-    webPreferences: { preload, contextIsolation: true, nodeIntegration: false },
+    // backgroundThrottling:false - TV & panel (pemutar suara PA) sering tidak
+    // fokus; timer penjadwal start_at tidak boleh diperlambat (D21).
+    webPreferences: { preload, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
   };
   const displays = screen.getAllDisplays();
   const useKiosk = cfg.kiosk && !cfg.dev_layout && displays.length >= 5;
@@ -107,7 +109,9 @@ export function createTeacherWindows(
 ): TeacherWindows {
   const preload = path.join(distDir, "preload.cjs");
   const common = {
-    webPreferences: { preload, contextIsolation: true, nodeIntegration: false },
+    // backgroundThrottling:false - TV & panel (pemutar suara PA) sering tidak
+    // fokus; timer penjadwal start_at tidak boleh diperlambat (D21).
+    webPreferences: { preload, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
   };
 
   // Panel di kiri-atas supaya tidak menutup grid TV dev di kanan.
@@ -117,10 +121,15 @@ export function createTeacherWindows(
     x: area.x + 8,
     y: area.y + 28,
     width: Math.max(520, Math.min(880, area.width - 2 * (480 + 8) - 24)),
-    height: 640,
-    title: "Panel Operator — Panggung Torang",
-    backgroundColor: "#101528",
+    height: Math.max(640, area.height - 40),
+    title: "Panel Guru — Panggung Torang",
+    backgroundColor: "#0e1330",
   });
+  // Di kelas (kiosk), layar operator milik panel sepenuhnya: tata letak tiga
+  // kolom panel guru (deck 16 Sep, layar 1) butuh lebar penuh. Mode dev tetap
+  // menyisakan tempat untuk grid TV di kanan; panel menyesuaikan lebarnya.
+  const displays = screen.getAllDisplays();
+  if (cfg.kiosk && !cfg.dev_layout && displays.length >= 5) panel.maximize();
   void panel.loadFile(path.join(distDir, "renderer", "panel.html"));
 
   const wins: TeacherWindows = { panel, tvs: new Map() };

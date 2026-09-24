@@ -1,6 +1,6 @@
 # STATUS PROYEK — Torang Stage (baca ini dulu di sesi baru)
 
-**Terakhir diperbarui:** 17 Sep 2026 · tag repo terakhir **v0.3.3** (18 Agu)
+**Terakhir diperbarui:** 24 Sep 2026 · **versi kode v0.4.0** (package.json; tag `v0.4.0` dibuat Hadi saat commit) · tag sebelumnya **v0.3.3** (18 Agu)
 **+ pekerjaan 7–16 Sep yang BELUM ditag** · GitHub: `github.com/yuzuruzero/torang-stage`
 **Guna dokumen:** satu file untuk memahami apa yang SUDAH jadi, apa yang
 TERVERIFIKASI di dunia nyata, dan apa langkah berikutnya — tanpa Hadi harus
@@ -21,6 +21,34 @@ arsitektur & kontrak · 03 telemetri/hatch · 04 acceptance & degradasi · 05
 checklist). Hasil audit kode terhadap paket itu:
 `informations/05-checklist-kesesuaian-TERISI-2026-09-17.md` — **baca itu untuk
 tahu persis mana yang sesuai, beda, dan belum ada (62 item).**
+
+**v0.4.0 (24 Sep) — panel & kalimat perintah untuk 4 layar.** Naik dari
+0.3.3 karena mencakup SEMUA pekerjaan sejak 18 Agu yang belum pernah ditag
+(CLI, voice PTT + Whisper, PC guru baru) ditambah perubahan 24 Sep di bawah.
+Panel guru menampilkan versinya dan memberi peringatan merah kalau cloud yang
+jalan versinya berbeda. Dokumen ini belum
+ditulis ulang penuh sejak 17 Sep (voice PTT + Whisper sudah jalan sejak 18–19
+Sep; PC guru baru 22 Sep — lihat `_changelog\INDEX.md` di torangapp). Yang
+ditambahkan 24 Sep (D22–D27, `KALIMAT-BAKU-VOICE.md`):
+
+- ✅ **Bug diperbaiki:** `puter` ke layar lain kini exit → enter → materi (dulu
+  materi mulai bersamaan dengan exit, tanpa enter).
+- ✅ `puter tes` tanpa sasaran = layar tempat Torang berada; kata kerja `tampilkan`
+  (modul maupun scene).
+- ✅ **Kalimat majemuk** maks. 3 perintah: `dan` = serentak, `lalu`/`habis itu`
+  = menunggu video sebelumnya selesai. Semua-atau-tidak; STOP membatalkan antrean.
+- ✅ **Tata layar**: preset 4 TV (`apps/cloud/config/tata-layar.json`), disunting &
+  dijalankan dari panel, diucapkan "tata <nama>".
+- ✅ **Konfirmasi 1 dtk** sebelum perintah suara dikirim + tombol BATAL.
+- ✅ **Panel guru mengikuti deck (layar 1)** (D29): rundown klik-untuk-lompat,
+  peta ruangan TV + 20 kursi dengan menu klik, riwayat cue, bilah suara bawah
+  (PTT · transkrip · konfirmasi 1 dtk · GO/ULANG/STOP); alat lain di laci ⚙.
+- ✅ **Video tersendat di PC guru baru (22 Sep)** — obatnya kini di repo (D21):
+  decoder video software + anti-throttling window TV. Pasang ulang panel tidak
+  perlu disunting tangan lagi. PC yang justru tersendat: geser tombol "mode
+  video cadangan" di panel guru / jendela login murid (D28).
+- ⏳ **Belum diuji di Electron sungguhan** — panel diuji di Chromium headless
+  dengan data tiruan; cloud & parser diuji otomatis (tes: 212 → 281).
 
 ## Apa yang sudah jadi
 
