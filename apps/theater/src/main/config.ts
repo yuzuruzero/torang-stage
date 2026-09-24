@@ -25,6 +25,8 @@ export interface VoiceConfig {
   /** Jeda konfirmasi (ms) sebelum perintah suara dikirim: transkrip tampil di
    *  panel dan bisa DIBATALKAN (PTT lagi / tombol Batal). 0 = langsung kirim. */
   konfirmasi_ms: number;
+  /** Periksa ulang mic tiap sekian detik (0 = hanya saat app dibuka). */
+  cek_mic_detik: number;
 }
 
 export interface TheaterConfig {
@@ -98,6 +100,7 @@ export function loadTheaterConfig(appRoot: string): TheaterConfig {
       tombol_ya: "F9",
       berkas_uji: "",
       konfirmasi_ms: 1000,
+      cek_mic_detik: 15,
     },
   };
   // --config=path CLI (aman untuk PowerShell/cmd, tanpa env var)

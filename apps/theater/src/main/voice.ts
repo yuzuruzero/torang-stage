@@ -96,6 +96,22 @@ export interface VoiceConfig {
    * 0 = langsung kirim (perilaku lama).
    */
   konfirmasi_ms: number;
+  /**
+   * Periksa ulang mic tiap sekian detik (bawaan 15; 0 = hanya saat mulai).
+   * Tanpa ini, mic yang dicabut di tengah kelas baru ketahuan saat guru bicara
+   * dan panel melapor "merekam HENING" - terlambat satu perintah.
+   */
+  cek_mic_detik: number;
+}
+
+/** Mic yang sedang dipakai & apakah masih terbaca Windows. */
+export interface InfoMic {
+  nama: string | null;
+  ada: boolean;
+  /** "berkas" = mode uji tanpa mic (berkas_uji). */
+  sumber: "mic" | "berkas";
+  /** Waktu pemeriksaan terakhir (epoch ms). */
+  dicek: number;
 }
 
 export interface StatusVoice {
@@ -113,6 +129,8 @@ export interface StatusVoice {
   konfirmasi?: { sampai: number; total_ms: number } | null;
   /** Perintah yang barusan DIBATALKAN guru selama jeda konfirmasi. */
   dibatalkan?: boolean;
+  /** Mic yang dipakai (ikut di SETIAP laporan supaya panel selalu tahu). */
+  mic?: InfoMic | null;
 }
 
 type Kirim = (intent: Record<string, unknown>) => Promise<void>;
@@ -190,6 +208,27 @@ function jalankan(exe: string, args: string[]) {
   return { keluaran: r.stdout ?? "", galat: r.stderr ?? "", kode: r.status, gagal: r.error?.message };
 }
 
+/** Seperti jalankan(), tapi TIDAK memblokir proses main. Dipakai untuk kerja
+ *  berkala (cek mic) dan tes mic: spawnSync di sana akan membekukan panel dan
+ *  penanganan cue selama ffmpeg berjalan. */
+function jalankanAsync(exe: string, args: string[], batasMs = 8000): Promise<{ keluaran: string; galat: string; kode: number | null; gagal?: string }> {
+  return new Promise((selesai) => {
+    let keluaran = "", galat = "";
+    let p: ChildProcess;
+    try {
+      p = spawn(exe, args, TANPA_JENDELA);
+    } catch (e) {
+      selesai({ keluaran, galat, kode: null, gagal: (e as Error).message });
+      return;
+    }
+    const jaga = setTimeout(() => { try { p.kill(); } catch { /* */ } }, batasMs);
+    p.stdout?.on("data", (d) => { keluaran += String(d); });
+    p.stderr?.on("data", (d) => { galat += String(d); });
+    p.on("error", (e) => { clearTimeout(jaga); selesai({ keluaran, galat, kode: null, gagal: e.message }); });
+    p.on("close", (kode) => { clearTimeout(jaga); selesai({ keluaran, galat, kode }); });
+  });
+}
+
 export class Voice {
   private cfg: VoiceConfig;
   private dirVoice: string;
@@ -212,12 +251,21 @@ export class Voice {
   private saranTertunda: { intent: Record<string, unknown>; kalimat: string; sampai: number } | null = null;
   /** Perintah yang sudah lolos parser dan sedang menunggu jeda konfirmasi. */
   private menunggu: { selesai: (kirim: boolean) => void } | null = null;
+  /** Mic yang sedang dipakai; ikut di setiap laporan ke panel. */
+  private infoMic: InfoMic | null = null;
+  /** Mic dipilih otomatis (config kosong)? Kalau ya, boleh pindah ke mic lain
+   *  yang dicolok; kalau guru menulis nama mic di config, pilihannya dihormati. */
+  private micOtomatis = false;
+  private pewaktuCekMic: NodeJS.Timeout | null = null;
+  private sedangTesMic = false;
 
   constructor(cfg: VoiceConfig, appRoot: string, kirim: Kirim, lapor: Lapor) {
     this.cfg = cfg;
     this.dirVoice = path.resolve(appRoot, "..", "..", "tools", "voice");
     this.kirim = kirim;
-    this.lapor = lapor;
+    // Setiap laporan membawa info mic terkini - panel tidak perlu menebak.
+    this.lapor = (st: StatusVoice) => lapor({ ...st, mic: this.infoMic });
+    this.micOtomatis = !cfg.mic;
   }
 
   private berkas(nama: string) {
@@ -306,6 +354,7 @@ export class Voice {
         : path.resolve(this.dirVoice, this.cfg.berkas_uji);
       if (!fs.existsSync(f)) return { ok: false, pesan: `berkas_uji tidak ada: ${f}` };
       this.cfg.berkas_uji = f;
+      this.infoMic = { nama: `berkas uji: ${path.basename(f)}`, ada: true, sumber: "berkas", dicek: Date.now() };
       if (!this.cariFfmpegUbah()) {
         return { ok: false, pesan: "ffmpeg tidak ditemukan — tidak bisa mengubah berkas uji jadi WAV" };
       }
@@ -323,6 +372,7 @@ export class Voice {
         };
       }
       this.cfg.mic = mic;
+      this.infoMic = { nama: mic, ada: true, sumber: "mic", dicek: Date.now() };
       sumber = `mic: ${mic}`;
     }
     const terdaftar = daftarkanTombol(this.cfg.tombol, () => {
@@ -348,6 +398,15 @@ export class Voice {
     // seluruh perilaku jeda konfirmasi tinggal di satu berkas.
     ipcMain.removeAllListeners("panel:voice-batal");
     ipcMain.on("panel:voice-batal", () => this.batalkan());
+    // Tes mic dari laci Alat panel: rekam 2 dtk, ukur kerasnya.
+    ipcMain.removeHandler("voice:tes-mic");
+    ipcMain.handle("voice:tes-mic", () => this.tesMic());
+
+    // Cek mic berkala (mode berkas uji tidak butuh).
+    if (!modeBerkas && this.cfg.cek_mic_detik > 0) {
+      this.pewaktuCekMic = setInterval(() => { void this.cekMic(); }, this.cfg.cek_mic_detik * 1000);
+      this.pewaktuCekMic.unref?.();
+    }
 
     this.lapor({ keadaan: "diam" });
     const ya = this.cfg.tombol_ya ? `, ${this.cfg.tombol_ya} = ya benar` : "";
@@ -392,6 +451,73 @@ export class Voice {
       this.sibuk = false;
       fs.rmSync(wav, { force: true });
       this.lapor({ keadaan: "diam" });
+    }
+  }
+
+  /**
+   * Apakah mic masih terbaca? Dilewati saat merekam / memproses / tes (ffmpeg
+   * sedang memegang perangkat, dan daftar perangkat tidak berubah di tengah
+   * satu ucapan). Melapor ke panel HANYA kalau keadaannya berubah.
+   */
+  private async cekMic() {
+    if (!this.ffmpeg || this.rekaman || this.sibuk || this.sedangTesMic) return;
+    const r = await jalankanAsync(this.ffmpeg, ["-hide_banner", "-list_devices", "true", "-f", "dshow", "-i", "dummy"], 6000);
+    if (this.rekaman || this.sibuk) return; // keadaan berubah selama menunggu
+    const daftar = uraiMicDshow(r.galat + r.keluaran);
+    const lama = this.infoMic;
+    let nama = this.cfg.mic;
+    let ada = daftar.includes(nama);
+    if (!ada && this.micOtomatis) {
+      const ganti = pilihMic(daftar);
+      if (ganti) { nama = ganti; ada = true; this.cfg.mic = ganti; }
+    }
+    this.infoMic = { nama: nama || null, ada, sumber: "mic", dicek: Date.now() };
+    if (!lama || lama.ada !== ada || lama.nama !== this.infoMic.nama) {
+      const alasan = ada
+        ? (lama && !lama.ada ? `mic terbaca lagi: ${nama}` : lama && lama.nama !== nama ? `mic berganti ke: ${nama}` : undefined)
+        : `mic "${lama?.nama ?? nama}" TIDAK terdeteksi - cek kabel/penerima, atau Settings > Privacy > Microphone`;
+      console.log(`[voice] ${alasan ?? "mic dicek"}`);
+      this.lapor({ keadaan: "diam" });
+    }
+  }
+
+  /**
+   * Tes mic: rekam 2 detik lewat jalur yang sama dengan perintah suara (ffmpeg
+   * dshow, 16 kHz mono), lalu ukur suara paling keras. Tidak menjalankan
+   * whisper dan tidak mengirim apa pun ke panggung.
+   */
+  async tesMic(): Promise<{ ok: boolean; pesan: string; db?: number | null; mic?: string | null; tingkat?: "bagus" | "pelan" | "hening" }> {
+    if (this.cfg.berkas_uji) return { ok: false, pesan: "mode berkas uji aktif (berkas_uji di config) - mic tidak dipakai" };
+    if (!this.ffmpeg) return { ok: false, pesan: "ffmpeg dengan dshow tidak ditemukan" };
+    if (this.rekaman || this.sibuk || this.menunggu) return { ok: false, pesan: "voice sedang dipakai - coba lagi sebentar" };
+    if (this.sedangTesMic) return { ok: false, pesan: "tes mic sedang berjalan" };
+    this.sedangTesMic = true;
+    const wav = path.join(os.tmpdir(), `torang-tes-mic-${Date.now()}.wav`);
+    try {
+      const rek = await jalankanAsync(this.ffmpeg, [
+        "-hide_banner", "-loglevel", "error", "-f", "dshow", "-i", `audio=${this.cfg.mic}`,
+        "-ar", "16000", "-ac", "1", "-t", "2", "-y", wav,
+      ], 8000);
+      if (!fs.existsSync(wav) || fs.statSync(wav).size < 1000) {
+        const g = (rek.galat || rek.gagal || "").trim().split(/\r?\n/).slice(-1)[0] ?? "";
+        this.infoMic = { nama: this.cfg.mic || null, ada: false, sumber: "mic", dicek: Date.now() };
+        this.lapor({ keadaan: "diam" });
+        return { ok: false, mic: this.cfg.mic, pesan: `mic "${this.cfg.mic}" tidak bisa dibuka${g ? `: ${g}` : ""}` };
+      }
+      const v = await jalankanAsync(this.cariFfmpegUbah() ?? this.ffmpeg, ["-hide_banner", "-nostats", "-i", wav, "-af", "volumedetect", "-f", "null", "-"], 8000);
+      const db = volumeMaks(v.galat + v.keluaran);
+      const tingkat = db === null || db < AMBANG_HENING_DB ? "hening" : db < -30 ? "pelan" : "bagus";
+      const angka = db === null ? "?" : Number.isFinite(db) ? `${db.toFixed(0)} dB` : "hening total";
+      const pesan = tingkat === "bagus"
+        ? `suara terdengar jelas (${angka})`
+        : tingkat === "pelan"
+          ? `suara terdengar tapi pelan (${angka}) - dekatkan mic atau naikkan level di Windows`
+          : `HENING (${angka}) - mic mungkin di-mute, salah perangkat, atau izin mic Windows tertutup`;
+      this.catat({ jenis: "tes-mic", mic: this.cfg.mic, db: db !== null && Number.isFinite(db) ? db : null });
+      return { ok: true, mic: this.cfg.mic, db: db !== null && Number.isFinite(db) ? db : null, tingkat, pesan };
+    } finally {
+      this.sedangTesMic = false;
+      fs.rmSync(wav, { force: true });
     }
   }
 
@@ -574,6 +700,8 @@ export class Voice {
 
   berhenti() {
     this.batalkan();
+    if (this.pewaktuCekMic) clearInterval(this.pewaktuCekMic);
+    ipcMain.removeHandler("voice:tes-mic");
     ipcMain.removeAllListeners("panel:voice-batal");
     try { globalShortcut.unregister(akselerator(this.cfg.tombol)); } catch { /* */ }
     try { if (this.cfg.tombol_ya) globalShortcut.unregister(akselerator(this.cfg.tombol_ya)); } catch { /* */ }

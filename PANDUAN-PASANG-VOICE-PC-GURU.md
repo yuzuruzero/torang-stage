@@ -19,7 +19,7 @@ Ia akan menanyakan kunci ruangan, lalu mengerjakan semuanya sendiri:
 | Node.js | dipasang lewat winget kalau belum ada |
 | Torang Stage | diunduh dari GitHub + `npm install` |
 | Config panggung | ditulis dengan kunci ruangan yang kamu isi |
-| Shortcut Desktop | `Torang Panggung.bat` dibuat |
+| Shortcut Desktop | `Torang Panggung.bat` (tanpa jendela terminal) + `Torang Panggung (dengan terminal).bat` (untuk mencari masalah) |
 | ffmpeg | dipasang lewat winget kalau belum ada |
 | whisper.cpp + model | diunduh (~90 MB), lalu **diverifikasi** dengan benar-benar mentranskripsikan 1 detik hening |
 | Voice di app | **dinyalakan langsung di config** (`F8`, mode toggle) - tidak perlu menyunting JSON sendiri |
@@ -76,7 +76,11 @@ iex "& { $(irm https://raw.githubusercontent.com/yuzuruzero/torang-stage/main/to
 ## Sesudah terpasang: coba
 
 **1. Nyalakan panggung** - double-click `Torang Panggung.bat` di Desktop.
-Harus muncul: jendela "Torang Cloud", panel operator, dan 4 window TV.
+Harus muncul: panel guru dan 4 window TV - **tanpa jendela terminal** (sejak
+v0.4.1 cloud & app jalan tersembunyi; keluarannya di folder `logs\`:
+`cloud.log`, `app.log`). Tutup panel = cloud ikut berhenti. Kalau ada yang
+gagal, muncul kotak pesan dengan letak lognya. Perlu melihat terminal? Pakai
+`Torang Panggung (dengan terminal).bat`.
 
 **2. Uji sambungan tanpa mic dan tanpa Whisper.** Buka PowerShell baru:
 

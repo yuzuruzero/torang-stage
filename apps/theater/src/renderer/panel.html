@@ -187,6 +187,12 @@
   .vb-baris button { background:#2b3a7e; border:1px solid #40509e; border-radius:7px; padding:5px 10px; font-size:12px; }
   .vb-dur { color:var(--redup); font-size:12px; } .vb-galat { color:#ff9c90; font-size:12px; flex-basis:100%; } .vb-ok { color:var(--hijau); font-size:13px; }
   .saklar-baris { display:flex; gap:12px; align-items:flex-start; }
+  .meter-mic { height:10px; background:#0c1233; border-radius:99px; overflow:hidden; margin-top:8px; }
+  .meter-mic i { display:block; height:100%; width:0; border-radius:99px; transition:width .3s; }
+  #hasilTesMic.bagus { color:var(--hijau); } #hasilTesMic.pelan { color:#ffd77a; } #hasilTesMic.hening { color:#ff9c90; }
+  .mic-galat { color:#ff9c90; font-size:13px; font-weight:700; margin-top:6px; }
+  .ptt.mic-hilang .bulat { background:#5a1f25; color:#ffb0a8; border-color:var(--merah); }
+  .ptt.mic-hilang .ket { color:#ff9c90; }
   .saklar-video input:checked + span { background:#c08a2d; }
 </style>
 </head>
@@ -200,7 +206,7 @@
       <span class="pil" id="pilCloud">☁ Cloud …</span>
       <span class="pil" id="pilJam">⏱ Jam …</span>
       <span class="pil ok" id="pilKonten">▣ Konten …</span>
-      <span class="pil voice-mati" id="pilVoice">🎤 voice mati</span>
+      <span class="pil voice-mati" id="pilVoice" onclick="bukaLaciMic()" style="cursor:pointer">🎤 voice mati</span>
       <button class="tombol-alat" onclick="bukaLaci()">⚙ Alat</button>
       <button class="tombol-stop-atas" onclick="intent({intent:'STOP'})">■ STOP</button>
     </div>
@@ -285,6 +291,7 @@
       <h2 class="judul" style="color:var(--redup)">Transkrip Whisper (lokal)</h2>
       <div class="kotak-t kosong" id="transkrip">belum ada ucapan.</div>
       <div class="dikenali" id="dikenali"></div>
+      <div class="mic-galat" id="micGalat"></div>
       <div class="tolak" id="tolak"></div>
       <div class="saran" id="saran"></div>
       <div class="petunjuk" id="petunjuk">Hotkey selalu aktif — kalau suara gagal, guru tetap bisa menembak cue tanpa penonton sadar.</div>
@@ -335,6 +342,16 @@
       <div id="vbDaftar"></div>
       <button class="btn" onclick="muatInbox()">↻ Muat ulang folder video-baru</button>
       <span class="redup" id="vbFolder"></span>
+    </div>
+
+    <h3 class="judul" style="color:var(--redup)">Mic</h3>
+    <div class="blok">
+      <div><b id="micNama">—</b></div>
+      <div class="redup" id="micStatus">memeriksa…</div>
+      <button class="btn" id="tombolTesMic" onclick="tesMic()">🎙 Tes mic (2 detik)</button>
+      <div class="meter-mic" id="meterMic" style="display:none"><i id="meterMicIsi"></i></div>
+      <div id="hasilTesMic" style="font-size:13px; margin-top:6px; min-height:1.3em"></div>
+      <div class="redup" style="margin-top:4px">Bicara biasa ke mic selama 2 detik setelah menekan tombol. Tidak ada yang dikirim ke panggung.</div>
     </div>
 
     <h3 class="judul" style="color:var(--redup)">Mode video</h3>

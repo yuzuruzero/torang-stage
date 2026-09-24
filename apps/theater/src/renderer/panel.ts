@@ -125,9 +125,7 @@ function terapkanVoice(v: VoiceStatus): void {
     : v.keadaan === "merekam" ? "MIC DITEKAN"
     : v.keadaan === "memproses" ? "MEMPROSES…"
     : v.keadaan === "diam" ? `SIAP · ${tombolBicara || "PTT"}` : "VOICE MATI";
-  const pil = $("#pilVoice");
-  pil.className = `pil ${v.keadaan === "mati" ? "voice-mati" : v.keadaan === "merekam" ? "voice-merekam" : "voice-diam"}`;
-  pil.textContent = v.keadaan === "mati" ? "🎤 voice mati" : v.keadaan === "merekam" ? "🎤 merekam" : "🎤 voice siap";
+  terapkanMic(v);
 
   if (v.konfirmasi !== undefined) {
     konfirmasi = v.konfirmasi ?? null;
@@ -181,6 +179,69 @@ function terapkanVoice(v: VoiceStatus): void {
     $("#konfKet").textContent = `✓ terkirim${v.ms ? ` · whisper ${v.ms} ms` : ""}`;
   }
 }
+
+/** Pil mic di bilah atas + peringatan di bilah suara + kartu Mic di laci. */
+function terapkanMic(v: VoiceStatus): void {
+  const pil = $("#pilVoice");
+  const m = v.mic;
+  const pendek = (n: string) => (n.length > 26 ? n.slice(0, 25) + "…" : n);
+  let kelas = "voice-diam", teks = "🎤 siap", judul = "";
+  if (v.keadaan === "mati") { kelas = "voice-mati"; teks = "🎤 voice mati"; judul = v.alasan ?? ""; }
+  else if (m && !m.ada) { kelas = "buruk"; teks = "🎤 mic tidak terdeteksi"; judul = `mic "${m.nama ?? "?"}" tidak terbaca Windows`; }
+  else if (m && m.sumber === "berkas") { teks = "🎤 mode berkas uji"; judul = m.nama ?? ""; }
+  else {
+    const nm = m?.nama ? ` · ${pendek(m.nama)}` : "";
+    teks = v.keadaan === "merekam" ? `🎤 merekam${nm}` : `🎤 siap${nm}`;
+    if (v.keadaan === "merekam") kelas = "voice-merekam";
+    judul = m?.nama ?? "";
+  }
+  pil.className = `pil ${kelas}`;
+  pil.textContent = teks;
+  pil.title = `${judul}${judul ? " — " : ""}klik untuk tes mic`;
+
+  const hilang = Boolean(m && !m.ada && v.keadaan !== "mati");
+  $("#ptt").classList.toggle("mic-hilang", hilang);
+  if (hilang && !v.konfirmasi) $("#pttKet").textContent = "MIC HILANG";
+  $("#micGalat").textContent = hilang
+    ? `⚠ Mic "${m?.nama ?? "?"}" tidak terdeteksi — cek kabel / penerima wireless, lalu Settings › Privacy › Microphone. Hotkey tetap bisa dipakai.`
+    : "";
+
+  $("#micNama").textContent = v.keadaan === "mati" ? "voice mati" : m?.nama ?? "—";
+  const dicek = m?.dicek ? new Date(m.dicek).toLocaleTimeString("id-ID", { hour12: false }) : "";
+  $("#micStatus").textContent = v.keadaan === "mati"
+    ? (v.alasan ?? "voice tidak aktif di PC ini")
+    : m && !m.ada ? `TIDAK terdeteksi (dicek ${dicek})`
+    : m?.sumber === "berkas" ? "mode uji tanpa mic (berkas_uji di config)"
+    : `terdeteksi · dicek ${dicek} · diperiksa ulang tiap 15 detik`;
+}
+
+api.tesMic = async () => {
+  const tombol = $("#tombolTesMic") as HTMLButtonElement;
+  const hasil = $("#hasilTesMic");
+  const meter = $("#meterMic");
+  const isi = $("#meterMicIsi");
+  tombol.disabled = true;
+  hasil.className = "";
+  hasil.textContent = "🎙 merekam 2 detik… bicaralah sekarang";
+  meter.style.display = "none";
+  try {
+    const r = await window.torang.tesMic();
+    if (r.ok && typeof r.db === "number") {
+      // -60 dB (hening) .. 0 dB (paling keras) -> 0..100 %
+      const persen = Math.max(0, Math.min(100, ((r.db + 60) / 60) * 100));
+      meter.style.display = "block";
+      isi.style.width = `${persen}%`;
+      isi.style.background = r.tingkat === "bagus" ? "var(--hijau)" : r.tingkat === "pelan" ? "var(--emas)" : "var(--merah)";
+    }
+    hasil.className = r.tingkat ?? (r.ok ? "" : "hening");
+    hasil.textContent = `${r.ok ? (r.tingkat === "bagus" ? "✓" : "⚠") : "✕"} ${r.pesan}`;
+  } catch {
+    hasil.className = "hening";
+    hasil.textContent = "✕ voice tidak aktif di PC ini — tes mic tidak tersedia";
+  } finally {
+    tombol.disabled = false;
+  }
+};
 
 function animasiKonfirmasi(): void {
   if (!konfirmasi) return;
@@ -652,6 +713,10 @@ api.tataHapus = async () => {
 // --- laci alat ---------------------------------------------------------------
 api.bukaLaci = () => document.body.classList.add("laci-buka");
 api.tutupLaci = () => document.body.classList.remove("laci-buka");
+api.bukaLaciMic = () => {
+  document.body.classList.add("laci-buka");
+  setTimeout(() => $("#micNama").scrollIntoView({ block: "center", behavior: "smooth" }), 220);
+};
 function bukaLaci(): void { document.body.classList.add("laci-buka"); }
 function tutupLaci(): void { document.body.classList.remove("laci-buka"); }
 

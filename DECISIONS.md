@@ -264,3 +264,31 @@ label "fase 2" / "aset belum ada" — belum ada di sistem, tidak dipura-purakan.
 `LOMPAT_RUNDOWN`) — satu klik salah tidak boleh menayangkan apa pun. Papan ketik
 saat panel fokus: Spasi = GO, R = ULANG, Esc = BATAL selama konfirmasi, selain
 itu STOP; tidak aktif saat mengetik di kotak isian.
+
+## D30 · (24 Sep 2026) Panggung guru dinyalakan tanpa jendela terminal
+`Torang Panggung.bat` (Desktop, dibuat `pasang-guru.ps1`) dan `JALANKAN-PANGGUNG.bat`
+(akar repo) → `tools/Torang-Panggung.vbs` → `tools/jalankan-panggung.ps1`
+tersembunyi: nyalakan cloud (kalau belum hidup) dan `npm run guru` tanpa jendela,
+keluaran ke `logs\cloud*.log` & `logs\app*.log`; kunci & port dari config
+panggung. Tutup panel → setelah TIDAK ada electron dari folder repo (app bisa
+relaunch sendiri lewat tombol mode video) → cloud yang dinyalakan peluncur
+dimatikan (`taskkill /T`). Cloud yang sudah hidup sebelumnya tidak disentuh.
+Gagal = kotak pesan + letak log, bukan diam.
+Versi dengan terminal tetap ada: `Torang Panggung (dengan terminal).bat`.
+**Ditolak:** app Electron yang menyalakan cloud sendiri sebagai proses anak —
+lebih rapi, tapi mencampur dua peran di satu proses; kalau app macet, cloud
+(dan seluruh PC murid) ikut jatuh.
+
+## D31 · (24 Sep 2026) Mic diperiksa berkala; nama & status mic selalu terlihat
+"voice siap" dulu hanya berarti pemeriksaan SAAT APP DIBUKA lolos; mic yang
+dicabut di tengah kelas baru ketahuan saat guru bicara. Kini `voice.ts`
+memeriksa daftar mic (ffmpeg dshow, pembaca `mic-dshow.mjs` yang sama) tiap
+`voice.cek_mic_detik` (bawaan 15; 0 = mati), ASINKRON supaya proses main tidak
+membeku, dan dilewati saat merekam/memproses. Setiap laporan voice membawa
+`mic {nama, ada, sumber, dicek}`; panel menampilkan `🎤 siap · <nama mic>` atau
+pil merah "mic tidak terdeteksi" + peringatan di bilah suara. Mic yang dipilih
+otomatis (config kosong) boleh pindah ke mic lain yang dicolok; nama mic yang
+ditulis di config dihormati. Tes mic (laci ⚙ Alat): rekam 2 dtk lewat jalur yang
+sama, ukur `max_volume` — ≥ −30 dB bagus, −50..−30 pelan, < −50 hening
+(ambang yang sama dengan pemeriksaan hening D-19 Sep). Tidak menjalankan whisper,
+tidak mengirim apa pun ke panggung.

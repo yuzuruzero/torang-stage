@@ -173,15 +173,24 @@ if ($admin) {
 }
 
 # --- 7. Shortcut Desktop: nyalakan cloud (LAN) + panggung sekaligus ----------
-$bat = Join-Path ([Environment]::GetFolderPath("Desktop")) "Torang Panggung.bat"
+# Bawaan (sejak v0.4.1): TANPA jendela terminal - cloud & app jalan tersembunyi,
+# log ke folder logs\, tutup panel = cloud ikut berhenti (tools\jalankan-panggung.ps1).
+# Versi "dengan terminal" tetap dibuat untuk mencari masalah.
+$desktop = [Environment]::GetFolderPath("Desktop")
+$bat = Join-Path $desktop "Torang Panggung.bat"
+@"
+@echo off
+start "" wscript.exe "$Tujuan\tools\Torang-Panggung.vbs"
+"@ | Set-Content -Path $bat -Encoding ASCII
+$batTerminal = Join-Path $desktop "Torang Panggung (dengan terminal).bat"
 @"
 @echo off
 cd /d "$Tujuan"
 start "Torang Cloud" cmd /k jalankan-cloud-lan.bat $RoomKey
 timeout /t 6 /nobreak >nul
 npm run guru
-"@ | Set-Content -Path $bat -Encoding ASCII
-Write-Host "Shortcut dibuat: $bat"
+"@ | Set-Content -Path $batTerminal -Encoding ASCII
+Write-Host "Shortcut dibuat: $bat (tanpa terminal) + $batTerminal (untuk mencari masalah)"
 
 # --- 8. Deteksi IP LAN (untuk diisikan ke installer PC murid) ----------------
 $ipLan = $null

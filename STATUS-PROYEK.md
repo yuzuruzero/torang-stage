@@ -1,6 +1,6 @@
 # STATUS PROYEK — Torang Stage (baca ini dulu di sesi baru)
 
-**Terakhir diperbarui:** 24 Sep 2026 · **versi kode v0.4.0** (package.json; tag `v0.4.0` dibuat Hadi saat commit) · tag sebelumnya **v0.3.3** (18 Agu)
+**Terakhir diperbarui:** 24 Sep 2026 · **versi kode v0.4.1** (tag `v0.4.0` di GitHub = commit `bcad0c5`; 0.4.1 = perbaikan galat tutup panel, belum ditag) · tag sebelumnya **v0.3.3** (18 Agu)
 **+ pekerjaan 7–16 Sep yang BELUM ditag** · GitHub: `github.com/yuzuruzero/torang-stage`
 **Guna dokumen:** satu file untuk memahami apa yang SUDAH jadi, apa yang
 TERVERIFIKASI di dunia nyata, dan apa langkah berikutnya — tanpa Hadi harus

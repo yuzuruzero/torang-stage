@@ -59,6 +59,7 @@ type VoiceStatus = {
   bagian?: Array<{ teks: string; intent: Record<string, unknown>; jenis: "serentak" | "urut" | null }>;
   konfirmasi?: { sampai: number; total_ms: number } | null;
   dibatalkan?: boolean;
+  mic?: { nama: string | null; ada: boolean; sumber: "mic" | "berkas"; dicek: number } | null;
 };
 
 type PresetTata = { nama: string; layar: { tv1: string; tv2: string; tv3: string; tv4: string } };
@@ -102,6 +103,7 @@ interface TorangBridge {
   panelUnbind: (seat: string) => void;
   panelResetMurid: () => void;
   voiceBatal: () => void;
+  tesMic: () => Promise<{ ok: boolean; pesan: string; db?: number | null; mic?: string | null; tingkat?: "bagus" | "pelan" | "hening" }>;
   modeVideo: () => Promise<{ kartu_grafis: boolean }>;
   gantiModeVideo: (kartuGrafis: boolean) => Promise<{ ok: boolean; error?: string }>;
   tataSimpan: (preset: PresetTata) => Promise<{ ok: boolean; error?: string; presets?: PresetTata[] }>;

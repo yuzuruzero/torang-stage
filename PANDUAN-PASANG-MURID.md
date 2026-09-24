@@ -39,8 +39,9 @@ scope `workflow`); CI diaktifkan lewat web UI memakai isi `tools/ci-test.yml`.
    saat pertama jalan) → buat **"Torang Panggung.bat"** di Desktop
    (menyalakan cloud terbuka-LAN + app panggung sekaligus) → **menampilkan
    IP LAN + kunci yang harus diisikan ke installer murid**.
-4. Jalankan "Torang Panggung.bat": terminal cloud terbuka + panel operator +
-   4 window TV muncul.
+4. Jalankan "Torang Panggung.bat": panel guru + 4 window TV muncul, **tanpa
+   jendela terminal** (sejak v0.4.1; log di folder `logs\`). Untuk mencari
+   masalah pakai "Torang Panggung (dengan terminal).bat".
 
 ## C. Tiap PC MURID — `PASANG-MURID.bat`
 

@@ -95,9 +95,24 @@ const statusCache: Record<string, unknown> = {};
  *  panel selesai memuat, jadi pesan pertamanya selalu hilang. */
 let statusVoice: StatusVoice | null = null;
 
+/**
+ * Kirim ke jendela panel HANYA kalau jendelanya masih hidup.
+ *
+ * Bug 24 Sep 2026: menutup panel = app berhenti -> voice.berhenti() melapor
+ * "voice mati" ke panel yang SUDAH dihancurkan -> Electron melempar
+ * "Object has been destroyed" dan memunculkan kotak galat di layar guru setiap
+ * kali panel ditutup. Semua kiriman ke panel lewat sini, jadi tidak ada lagi
+ * jalan yang lupa memeriksa.
+ */
+function kePanel(kanal: string, data: unknown): void {
+  const p = wins?.panel;
+  if (!p || p.isDestroyed() || p.webContents.isDestroyed()) return;
+  p.webContents.send(kanal, data);
+}
+
 function panelStatus(partial: Record<string, unknown>): void {
   Object.assign(statusCache, partial);
-  wins?.panel.webContents.send("panel:status", partial);
+  kePanel("panel:status", partial);
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +170,7 @@ function handleCueMessage(cue: Cue): void {
 
   if (cue.type === "STOP") {
     for (const [, w] of wins.tvs) w.webContents.send("tv:stop");
-    wins.panel.webContents.send("panel:audio", { stop: true });
+    kePanel("panel:audio", { stop: true });
     pending.clear();
     client.sendAck({ ...ackBase, status: "played", detail: "semua idle" });
     panelStatus({ lastCue: `${cue.cue_id} STOP` });
@@ -232,7 +247,7 @@ function handleCueMessage(cue: Cue): void {
   if (cue.audio) {
     const audioUrl = resolveAssetUrl(cue.audio.asset);
     if (audioUrl) {
-      wins.panel.webContents.send("panel:audio", { fileUrl: audioUrl, playAtEpoch: playAtLocal });
+      kePanel("panel:audio", { fileUrl: audioUrl, playAtEpoch: playAtLocal });
     } else {
       panelStatus({ note: `audio tidak ketemu: ${cue.audio.asset}` });
     }
@@ -530,8 +545,8 @@ app.whenReady().then(() => {
       // ikut terhapus, kalimat yang ditolak lenyap sebelum sempat dibaca.
       statusVoice = s.didengar || s.alasan || s.intent
         ? s
-        : { ...(statusVoice ?? {}), keadaan: s.keadaan };
-      wins?.panel.webContents.send("panel:voice", s);
+        : { ...(statusVoice ?? {}), keadaan: s.keadaan, mic: s.mic };
+      kePanel("panel:voice", s);
       if (s.intent) console.log(`[voice] "${s.didengar}" -> ${JSON.stringify(s.intent)} (${s.ms ?? "?"} ms)`);
       else if (s.alasan) console.log(`[voice] "${s.didengar ?? ""}" DITOLAK: ${s.alasan}`);
     });
@@ -541,7 +556,7 @@ app.whenReady().then(() => {
     if (!hasil.ok) {
       voice = null;
       statusVoice = { keadaan: "mati", alasan: hasil.pesan };
-      wins?.panel.webContents.send("panel:voice", statusVoice);
+      kePanel("panel:voice", statusVoice);
     }
   }
 
@@ -551,7 +566,7 @@ app.whenReady().then(() => {
     if (!wins || wins.panel.isDestroyed()) return;
     try {
       const res = await fetch(`${cfg.cloud_api}/api/state`);
-      if (res.ok) wins.panel.webContents.send("panel:state", await res.json());
+      if (res.ok) kePanel("panel:state", await res.json());
     } catch {
       /* offline sudah ditandai lewat status WS */
     }

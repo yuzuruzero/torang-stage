@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld("torang", {
   gantiModeVideo: (kartuGrafis: boolean) => ipcRenderer.invoke("video:mode-ganti", kartuGrafis),
   // --- jeda konfirmasi voice & tata layar (24 Sep 2026) ---
   voiceBatal: () => ipcRenderer.send("panel:voice-batal"),
+  tesMic: () => ipcRenderer.invoke("voice:tes-mic"),
   tataSimpan: (preset: unknown) => ipcRenderer.invoke("tata:simpan", preset),
   tataHapus: (nama: string) => ipcRenderer.invoke("tata:hapus", nama),
   rundownReset: () => ipcRenderer.invoke("rundown:reset"),
